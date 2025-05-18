@@ -1,11 +1,20 @@
-version: '3.8'
-
 services:
-  moonbit-app:
+  client:
     build:
-      context: .
+      context: ./bitcoin-moon/client
       dockerfile: Dockerfile
-    container_name: moonbit-app
+    container_name: moonbit-client
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+  server:
+    build:
+      context: ./bitcoin-moon/server
+      dockerfile: Dockerfile
+    container_name: moonbit-server
     environment:
       - NODE_ENV=production
       - PORT=3001
@@ -13,9 +22,9 @@ services:
       # Можно указать фиктивные значения для запуска
       - COINGECKO_API_KEY=dummy_key
       - FARMSENSE_API_KEY=dummy_key
-      - CORS_ORIGIN=http://localhost:3001
+      - CORS_ORIGIN=http://localhost:3000
     ports:
       - "3001:3001"
     volumes:
-      - ./bitcoin-moon/server/logs:/app/bitcoin-moon/server/logs
+      - ./bitcoin-moon/server/logs:/app/logs
     restart: unless-stopped 
