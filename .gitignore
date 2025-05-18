@@ -57,4 +57,7 @@ Thumbs.db
 
 # Файлы дампов
 *.dump
-*.out 
+*.out
+
+# Артефакты e2e тестов Playwright
+/tests/e2e/artifacts/ 
