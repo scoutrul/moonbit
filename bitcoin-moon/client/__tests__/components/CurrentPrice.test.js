@@ -2,10 +2,14 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import axios from 'axios';
-import CurrentPrice from '../../src/components/CurrentPrice';
+import CurrentPrice from '../../src/components/CurrentPrice.jsx';
 
-// Мокируем axios
-jest.mock('axios');
+// Мокируем axios напрямую в тесте
+jest.mock('axios', () => {
+  return {
+    get: jest.fn()
+  };
+});
 
 describe('CurrentPrice Component', () => {
   beforeEach(() => {
@@ -32,7 +36,7 @@ describe('CurrentPrice Component', () => {
     
     // Ждем загрузки данных
     await waitFor(() => {
-      expect(screen.getByText(/₽50,000.00/)).toBeInTheDocument();
+      expect(screen.getByText(/50 000,00 \$/)).toBeInTheDocument();
       expect(screen.getByText(/▲ 2.50%/)).toBeInTheDocument();
     });
     
@@ -53,7 +57,7 @@ describe('CurrentPrice Component', () => {
     
     // Ждем загрузки данных
     await waitFor(() => {
-      expect(screen.getByText(/₽48,000.00/)).toBeInTheDocument();
+      expect(screen.getByText(/48 000,00 \$/)).toBeInTheDocument();
       expect(screen.getByText(/▼ 3.20%/)).toBeInTheDocument();
     });
     

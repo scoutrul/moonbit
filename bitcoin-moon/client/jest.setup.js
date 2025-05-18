@@ -1,2 +1,2 @@
 // Добавляем улучшенные матчеры для тестирования DOM-элементов
-import '@testing-library/jest-dom'; 
+require('@testing-library/jest-dom'); 

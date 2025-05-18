@@ -1,2 +1,2 @@
 // Мок для CSS файлов
-export default {}; 
+module.exports = {}; 
