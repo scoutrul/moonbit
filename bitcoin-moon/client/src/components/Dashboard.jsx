@@ -3,6 +3,8 @@ import CandlestickChart from './CandlestickChart';
 import CurrentPrice from './CurrentPrice';
 import TimeframeSelector from './TimeframeSelector';
 import UpcomingEvents from './UpcomingEvents';
+import BuggyCounter from './BuggyCounter';
+import ErrorBoundary from './ErrorBoundary';
 
 const Dashboard = () => {
   const [timeframe, setTimeframe] = useState('1d'); // 1h, 1d, 1w
@@ -25,6 +27,13 @@ const Dashboard = () => {
             timeframe={timeframe} 
             onTimeframeChange={setTimeframe} 
           />
+        </div>
+        
+        {/* Тестовый компонент с ошибкой */}
+        <div className="mt-4">
+          <ErrorBoundary>
+            <BuggyCounter />
+          </ErrorBoundary>
         </div>
       </div>
       

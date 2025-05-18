@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
+import ErrorBoundary from './components/ErrorBoundary';
+import DevPanel from './components/DevPanel';
 
 function App() {
   const [darkMode, setDarkMode] = useState(false);
@@ -29,12 +31,17 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      <Header darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
-      <main className="container mx-auto px-4 py-8">
-        <Dashboard />
-      </main>
-    </div>
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+        <Header darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
+        <main className="container mx-auto px-4 py-8">
+          <ErrorBoundary>
+            <Dashboard />
+          </ErrorBoundary>
+        </main>
+        <DevPanel />
+      </div>
+    </ErrorBoundary>
   );
 }
 
