@@ -2,7 +2,7 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Копируем файлы зависимостей
+# Копируем package.json и package-lock.json
 COPY package*.json ./
 
 # Устанавливаем зависимости
@@ -11,14 +11,8 @@ RUN npm install
 # Копируем исходный код
 COPY . .
 
-# Собираем клиентскую часть
-RUN npm run build
-
-# Устанавливаем простой сервер для раздачи статики
-RUN npm install -g serve
-
-# Порт для клиентской части
+# Открываем порт для dev-сервера
 EXPOSE 3000
 
-# Запускаем сервер для раздачи статики
-CMD ["serve", "-s", "dist", "-l", "3000"] 
+# Запускаем Vite dev server
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"] 
