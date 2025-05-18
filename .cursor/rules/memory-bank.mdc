@@ -1,9 +1,8 @@
 ---
 description: Cursor Memory Bank Rules
-globs:
+globs: 
 alwaysApply: true
 ---
-
 # Cursor's Memory Bank
 
 I am Cursor, an expert software engineer with a unique characteristic: my memory resets completely between sessions. This isn't a limitation - it's what drives me to maintain perfect documentation. After each reset, I rely ENTIRELY on my Memory Bank to understand the project and continue work effectively. I MUST read ALL memory bank files at the start of EVERY task - this is not optional.
@@ -160,3 +159,111 @@ REMEMBER: After every memory reset, I begin completely fresh. The Memory Bank is
 
 # Planning
 When asked to enter "Planner Mode" or using the /plan command, deeply reflect upon the changes being asked and analyze existing code to map the full scope of changes needed. Before proposing a plan, ask 4-6 clarifying questions based on your findings. Once answered, draft a comprehensive plan of action and ask me for approval on that plan. Once approved, implement all steps in that plan. After completing each phase/step, mention what was just completed and what the next steps are + phases remaining after these steps
+
+# Правила работы с проектом MoonBit
+
+## Именование
+
+- Используйте camelCase для именования переменных и функций в JavaScript
+- Используйте PascalCase для именования компонентов React
+- Используйте kebab-case для именования CSS классов и файлов стилей
+- Используйте UPPER_CASE для констант
+
+## Структура проекта
+
+- Клиентская часть находится в директории `bitcoin-moon/client`
+- Серверная часть находится в директории `bitcoin-moon/server`
+- Компоненты React хранятся в `client/src/components`
+- Хуки React хранятся в `client/src/hooks`
+- Сервисы для работы с API хранятся в `client/src/services`
+- Утилиты находятся в `client/src/utils`
+- Серверные контроллеры находятся в `server/src/controllers`
+- Серверные модели находятся в `server/src/models`
+- Серверные маршруты находятся в `server/src/routes`
+- Серверные сервисы находятся в `server/src/services`
+
+## Соглашения по коду
+
+### Серверная часть
+
+- Для каждого типа данных создается отдельный сервис, который инкапсулирует логику работы с этими данными
+- Сервисы реализуются как синглтоны
+- Логирование осуществляется через модуль `logger`
+- Сервисы должны включать механизмы кэширования для уменьшения количества запросов к внешним API
+- API маршруты должны обрабатывать ошибки и возвращать соответствующие статус-коды
+- Сервисы синхронизации должны иметь механизмы для периодического обновления данных
+
+### Клиентская часть
+
+- Компоненты React разделяют логику и представление
+- Используется функциональный подход с хуками для управления состоянием
+- Темная тема реализуется через Tailwind CSS с помощью класса `dark`
+- Стили определяются с использованием классов Tailwind
+- Запросы к API делаются через выделенные сервисы в директории `services`
+
+## Взаимодействие с внешними API
+
+- API CoinGecko используется для получения данных о биткоине
+- API FarmSense используется для получения данных о фазах луны
+- При недоступности внешних API должны использоваться локальные кэши или мок-данные
+- Частота запросов к внешним API должна учитывать их ограничения
+- Данные кэшируются для минимизации количества запросов
+
+## Тестирование и отладка
+
+- Для логирования используется Winston
+- Логи сохраняются в директории `server/logs`
+- Перед коммитом код должен проходить линтинг и базовые тесты
+- Изменения в API должны быть документированы
+
+## Безопасность
+
+- Не хранить чувствительные данные (ключи API, пароли) в коде
+- Использовать переменные окружения через .env файл
+- Обрабатывать и валидировать все пользовательские входные данные
+
+## Производительность
+
+- Минимизировать количество запросов к внешним API
+- Использовать кэширование для улучшения производительности
+- Оптимизировать размер бандла для клиентской части
+
+## Рабочий процесс
+
+- Новые функции разрабатываются в отдельных ветках
+- Перед слиянием ветка должна пройти ревью
+- Коммиты должны содержать понятные описания изменений
+
+## Формат коммит-сообщений
+
+Для коммитов используется следующий формат:
+```
+[область]: тип - краткое описание
+```
+
+### Области проекта
+- `client` - изменения в клиентской части
+- `server` - изменения в серверной части
+- `common` - общие изменения, затрагивающие обе части
+- `infra` - изменения в инфраструктуре, настройках сборки и т.д.
+- `docs` - изменения в документации
+
+### Типы изменений
+- `feat` - новая функциональность
+- `fix` - исправление ошибки
+- `refactor` - рефакторинг кода без изменения функциональности
+- `style` - изменения форматирования, отступов и т.д.
+- `docs` - изменения документации
+- `test` - добавление или изменение тестов
+- `perf` - оптимизация производительности
+- `chore` - рутинные задачи, обновление зависимостей и т.д.
+
+### Примеры
+```
+[client]: feat - добавлен компонент для отображения фаз луны
+[server]: fix - исправлена ошибка кэширования данных в BitcoinService
+[common]: refactor - переименованы ключи конфигурации для единообразия
+[server]: perf - оптимизирован запрос к API CoinGecko
+[client]: style - улучшен темный режим для графиков
+[infra]: chore - обновлены зависимости проекта
+```
