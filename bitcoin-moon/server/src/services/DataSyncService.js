@@ -1,104 +1,127 @@
 const logger = require('../utils/logger');
-const BitcoinService = require('./BitcoinService');
-const MoonService = require('./MoonService');
-const AstroService = require('./AstroService');
-const EventsService = require('./EventsService');
+const bitcoinService = require('./BitcoinService');
+const moonService = require('./MoonService');
+const astroService = require('./AstroService');
+const eventsService = require('./EventsService');
 
 /**
- * Сервис для синхронизации данных из внешних источников
- * Управляет периодическим обновлением данных
+ * Сервис синхронизации данных
+ * Отвечает за координацию обновления данных из всех сервисов
  */
 class DataSyncService {
   constructor() {
-    this.isInitialized = false;
+    // Интервалы обновления для разных типов данных в миллисекундах
     this.syncIntervals = {
-      bitcoin: null,
-      moon: null,
-      astro: null,
-      events: null
+      bitcoin: null,   // 5 минут
+      moon: null,      // 1 час
+      astro: null,     // 6 часов
+      events: null     // 30 минут
     };
     
-    this.syncTimes = {
-      bitcoin: parseInt(process.env.BITCOIN_SYNC_MINUTES || '15', 10),
-      moon: parseInt(process.env.MOON_SYNC_MINUTES || '60', 10),
-      astro: parseInt(process.env.ASTRO_SYNC_MINUTES || '120', 10),
-      events: parseInt(process.env.EVENTS_SYNC_MINUTES || '30', 10)
+    this.intervalTimes = {
+      bitcoin: 5 * 60 * 1000,
+      moon: 60 * 60 * 1000,
+      astro: 6 * 60 * 60 * 1000,
+      events: 30 * 60 * 1000
     };
+    
+    // Флаг инициализации
+    this.initialized = false;
   }
-
+  
   /**
-   * Инициализирует сервис синхронизации
+   * Инициализирует сервис синхронизации данных
    */
   initialize() {
-    if (this.isInitialized) {
-      logger.warn('DataSyncService уже был инициализирован');
+    if (this.initialized) {
+      logger.info('Сервис синхронизации данных уже инициализирован');
       return;
     }
-
-    logger.info('Инициализация DataSyncService...');
     
-    // Выполняем первоначальную синхронизацию
+    logger.info('Инициализация сервиса синхронизации данных');
+    
+    // Выполняем начальную синхронизацию всех данных
     this.syncAll()
       .then(() => {
-        logger.info('Первоначальная синхронизация завершена');
+        logger.info('Начальная синхронизация данных успешно завершена');
         
-        // Настраиваем периодическую синхронизацию
-        this.setupSyncIntervals();
+        // Запускаем регулярную синхронизацию данных
+        this.startPeriodicSync();
         
-        this.isInitialized = true;
+        this.initialized = true;
       })
       .catch(error => {
-        logger.error('Ошибка при первоначальной синхронизации', { error });
+        logger.error('Ошибка при начальной синхронизации данных', { error });
       });
   }
   
   /**
-   * Настраивает интервалы синхронизации для всех источников данных
+   * Запускает периодическую синхронизацию данных по расписанию
    */
-  setupSyncIntervals() {
-    // Синхронизация данных биткоина
-    this.syncIntervals.bitcoin = setInterval(() => {
-      this.syncBitcoinData()
-        .catch(error => logger.error('Ошибка при синхронизации данных биткоина', { error }));
-    }, this.syncTimes.bitcoin * 60 * 1000);
+  startPeriodicSync() {
+    logger.info('Запуск периодической синхронизации данных');
     
-    // Синхронизация данных луны
-    this.syncIntervals.moon = setInterval(() => {
-      this.syncMoonData()
-        .catch(error => logger.error('Ошибка при синхронизации данных луны', { error }));
-    }, this.syncTimes.moon * 60 * 1000);
+    // Bitcoin данные - каждые 5 минут
+    this.syncIntervals.bitcoin = setInterval(
+      () => this.syncBitcoinData().catch(error => {
+        logger.error('Ошибка при синхронизации Bitcoin данных', { error });
+      }),
+      this.intervalTimes.bitcoin
+    );
     
-    // Синхронизация астрологических данных
-    this.syncIntervals.astro = setInterval(() => {
-      this.syncAstroData()
-        .catch(error => logger.error('Ошибка при синхронизации астрологических данных', { error }));
-    }, this.syncTimes.astro * 60 * 1000);
+    // Данные о луне - каждый час
+    this.syncIntervals.moon = setInterval(
+      () => this.syncMoonData().catch(error => {
+        logger.error('Ошибка при синхронизации данных о луне', { error });
+      }),
+      this.intervalTimes.moon
+    );
     
-    // Синхронизация событий
-    this.syncIntervals.events = setInterval(() => {
-      this.syncEventsData()
-        .catch(error => logger.error('Ошибка при синхронизации данных событий', { error }));
-    }, this.syncTimes.events * 60 * 1000);
+    // Астрологические данные - каждые 6 часов
+    this.syncIntervals.astro = setInterval(
+      () => this.syncAstroData().catch(error => {
+        logger.error('Ошибка при синхронизации астрологических данных', { error });
+      }),
+      this.intervalTimes.astro
+    );
     
-    logger.info('Настроены интервалы синхронизации данных', { 
-      intervals: {
-        bitcoin: `${this.syncTimes.bitcoin} мин`,
-        moon: `${this.syncTimes.moon} мин`,
-        astro: `${this.syncTimes.astro} мин`,
-        events: `${this.syncTimes.events} мин`
+    // События - каждые 30 минут
+    this.syncIntervals.events = setInterval(
+      () => this.syncEventsData().catch(error => {
+        logger.error('Ошибка при синхронизации данных о событиях', { error });
+      }),
+      this.intervalTimes.events
+    );
+    
+    logger.info('Периодическая синхронизация данных успешно запущена');
+  }
+  
+  /**
+   * Останавливает все синхронизации данных
+   */
+  stopAll() {
+    logger.info('Остановка всех синхронизаций данных');
+    
+    // Очищаем все интервалы
+    Object.keys(this.syncIntervals).forEach(key => {
+      if (this.syncIntervals[key]) {
+        clearInterval(this.syncIntervals[key]);
+        this.syncIntervals[key] = null;
       }
     });
+    
+    logger.info('Все синхронизации данных остановлены');
   }
   
   /**
    * Синхронизирует все данные
+   * @returns {Promise<boolean>} Результат синхронизации
    */
   async syncAll() {
-    logger.info('Синхронизация всех данных...');
-    
-    const startTime = Date.now();
+    logger.info('Начало полной синхронизации данных');
     
     try {
+      // Запускаем синхронизацию всех сервисов параллельно
       await Promise.all([
         this.syncBitcoinData(),
         this.syncMoonData(),
@@ -106,119 +129,104 @@ class DataSyncService {
         this.syncEventsData()
       ]);
       
-      const duration = Date.now() - startTime;
-      logger.info(`Синхронизация всех данных завершена за ${duration}мс`);
-      
+      logger.info('Полная синхронизация данных успешно завершена');
       return true;
     } catch (error) {
-      logger.error('Ошибка при синхронизации всех данных', { error });
-      throw error;
+      logger.error('Ошибка при полной синхронизации данных', { error });
+      return false;
     }
   }
   
   /**
-   * Синхронизирует данные биткоина
+   * Синхронизирует данные о биткоине
+   * @returns {Promise<boolean>} Результат синхронизации
    */
   async syncBitcoinData() {
-    logger.info('Синхронизация данных биткоина...');
-    const startTime = Date.now();
+    logger.debug('Синхронизация данных о биткоине');
     
     try {
-      await BitcoinService.updatePriceData();
-      await BitcoinService.updateHistoricalData();
+      // Запускаем обновление текущих цен и исторических данных параллельно
+      const [priceData, historicalData] = await Promise.all([
+        bitcoinService.updatePriceData(),
+        bitcoinService.updateHistoricalData()
+      ]);
       
-      const duration = Date.now() - startTime;
-      logger.info(`Синхронизация данных биткоина завершена за ${duration}мс`);
+      logger.info('Данные о биткоине успешно синхронизированы', {
+        priceDataUpdated: !!priceData,
+        historicalDataUpdated: !!historicalData
+      });
       
       return true;
     } catch (error) {
-      logger.error('Ошибка при синхронизации данных биткоина', { error });
-      throw error;
+      logger.error('Ошибка при синхронизации данных о биткоине', { error });
+      return false;
     }
   }
   
   /**
    * Синхронизирует данные о фазах луны
+   * @returns {Promise<boolean>} Результат синхронизации
    */
   async syncMoonData() {
-    logger.info('Синхронизация данных луны...');
-    const startTime = Date.now();
+    logger.debug('Синхронизация данных о фазах луны');
     
     try {
-      await MoonService.updateMoonPhases();
+      // Обновляем данные о фазах луны
+      const moonData = await moonService.updateMoonPhases();
       
-      const duration = Date.now() - startTime;
-      logger.info(`Синхронизация данных луны завершена за ${duration}мс`);
+      logger.info('Данные о фазах луны успешно синхронизированы', {
+        dataUpdated: !!moonData
+      });
       
       return true;
     } catch (error) {
-      logger.error('Ошибка при синхронизации данных луны', { error });
-      throw error;
+      logger.error('Ошибка при синхронизации данных о фазах луны', { error });
+      return false;
     }
   }
   
   /**
    * Синхронизирует астрологические данные
+   * @returns {Promise<boolean>} Результат синхронизации
    */
   async syncAstroData() {
-    logger.info('Синхронизация астрологических данных...');
-    const startTime = Date.now();
+    logger.debug('Синхронизация астрологических данных');
     
     try {
-      await AstroService.updateAstroData();
+      // Обновляем астрологические данные
+      const astroData = await astroService.updateAstroData();
       
-      const duration = Date.now() - startTime;
-      logger.info(`Синхронизация астрологических данных завершена за ${duration}мс`);
+      logger.info('Астрологические данные успешно синхронизированы', {
+        dataUpdated: !!astroData
+      });
       
       return true;
     } catch (error) {
       logger.error('Ошибка при синхронизации астрологических данных', { error });
-      throw error;
+      return false;
     }
   }
   
   /**
    * Синхронизирует данные о событиях
+   * @returns {Promise<boolean>} Результат синхронизации
    */
   async syncEventsData() {
-    logger.info('Синхронизация данных о событиях...');
-    const startTime = Date.now();
+    logger.debug('Синхронизация данных о событиях');
     
     try {
-      await EventsService.updateEvents();
+      // Обновляем данные о событиях
+      const eventsData = await eventsService.updateEvents();
       
-      const duration = Date.now() - startTime;
-      logger.info(`Синхронизация данных о событиях завершена за ${duration}мс`);
+      logger.info('Данные о событиях успешно синхронизированы', {
+        dataUpdated: !!eventsData
+      });
       
       return true;
     } catch (error) {
       logger.error('Ошибка при синхронизации данных о событиях', { error });
-      throw error;
+      return false;
     }
-  }
-  
-  /**
-   * Останавливает все синхронизации
-   */
-  stopAll() {
-    logger.info('Остановка всех синхронизаций...');
-    
-    Object.values(this.syncIntervals).forEach(interval => {
-      if (interval) {
-        clearInterval(interval);
-      }
-    });
-    
-    this.syncIntervals = {
-      bitcoin: null,
-      moon: null,
-      astro: null,
-      events: null
-    };
-    
-    this.isInitialized = false;
-    
-    logger.info('Все синхронизации остановлены');
   }
 }
 

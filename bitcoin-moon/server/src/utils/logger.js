@@ -1,4 +1,4 @@
-const { createLogger, format, transports } = require('winston');
+const winston = require('winston');
 const path = require('path');
 const fs = require('fs');
 
@@ -8,85 +8,103 @@ if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }
 
-// Форматирование для консоли
-const consoleFormat = format.combine(
-  format.colorize(),
-  format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-  format.printf(({ timestamp, level, message, ...meta }) => {
-    let metaStr = Object.keys(meta).length 
-      ? `\n${JSON.stringify(meta, null, 2)}` 
-      : '';
-      
-    return `${timestamp} ${level}: ${message}${metaStr}`;
-  })
+// Конфигурация форматирования логов
+const logFormat = winston.format.combine(
+  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+  winston.format.errors({ stack: true }),
+  winston.format.splat(),
+  winston.format.json()
 );
-
-// Форматирование для файла
-const fileFormat = format.combine(
-  format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-  format.json()
-);
-
-// HTTP логирование
-const httpLogger = format((info, opts) => {
-  if (info.req && info.res) {
-    const { req, res, duration } = info;
-    info.message = `${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms`;
-    info.http = {
-      method: req.method,
-      url: req.originalUrl,
-      status: res.statusCode,
-      duration,
-      userAgent: req.get('user-agent') || '-',
-      ip: req.ip || req.connection.remoteAddress
-    };
-    delete info.req;
-    delete info.res;
-  }
-  return info;
-});
 
 // Создаем логгер
-const logger = createLogger({
+const logger = winston.createLogger({
   level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-  format: format.combine(
-    format.errors({ stack: true }),
-    format.splat()
-  ),
+  format: logFormat,
   defaultMeta: { service: 'moonbit-api' },
   transports: [
     // Логирование в файлы
-    new transports.File({ 
+    new winston.transports.File({ 
       filename: path.join(logDir, 'error.log'), 
       level: 'error',
-      format: fileFormat
+      maxsize: 5242880, // 5MB
+      maxFiles: 5
     }),
-    new transports.File({ 
+    new winston.transports.File({ 
       filename: path.join(logDir, 'combined.log'),
-      format: fileFormat
-    }),
-    // Отдельное логирование HTTP запросов
-    new transports.File({ 
-      filename: path.join(logDir, 'http.log'),
-      level: 'http',
-      format: format.combine(
-        httpLogger(),
-        fileFormat
-      )
+      maxsize: 5242880, // 5MB
+      maxFiles: 10
     })
   ]
 });
 
-// Если не production, то также логируем в консоль
+// Если не продакшн, то добавляем консольный транспорт с цветами
 if (process.env.NODE_ENV !== 'production') {
-  logger.add(new transports.Console({
-    format: consoleFormat
+  logger.add(new winston.transports.Console({
+    format: winston.format.combine(
+      winston.format.colorize(),
+      winston.format.printf(({ level, message, timestamp, ...meta }) => {
+        // Форматирование метаданных для читаемости в консоли
+        let metaStr = '';
+        if (Object.keys(meta).length > 0) {
+          if (meta.error) {
+            // Форматирование ошибок
+            metaStr = meta.error.stack 
+              ? `\n${meta.error.stack}` 
+              : `\n${JSON.stringify(meta.error)}`;
+          } else {
+            // Форматирование остальных метаданных
+            metaStr = `\n${JSON.stringify(meta, null, 2)}`;
+          }
+        }
+        return `${timestamp} ${level}: ${message}${metaStr}`;
+      })
+    )
   }));
 }
 
-// Добавляем метод для логирования HTTP запросов
-logger.http = (req, res, duration) => {
-  logger.log('http', { req, res, duration });
+// Обработчик необработанных исключений
+logger.exceptions.handle(
+  new winston.transports.File({ 
+    filename: path.join(logDir, 'exceptions.log'),
+    maxsize: 5242880, // 5MB
+    maxFiles: 5 
+  })
+);
+
+// Обработчик необработанных отклонений промисов
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Необработанное отклонение промиса', { reason, promise });
+});
+
+// Функция для логирования HTTP-запросов
+logger.logRequest = (req, res, next) => {
+  const start = Date.now();
+  
+  // Логируем запрос
+  logger.debug(`${req.method} ${req.originalUrl}`, {
+    method: req.method,
+    url: req.originalUrl,
+    ip: req.ip,
+    headers: req.headers,
+    query: req.query,
+    body: req.body
+  });
+  
+  // После обработки запроса
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const level = res.statusCode >= 400 ? 'warn' : 'debug';
+    
+    logger[level](`${req.method} ${req.originalUrl} ${res.statusCode} - ${duration}ms`, {
+      method: req.method,
+      url: req.originalUrl,
+      status: res.statusCode,
+      duration,
+      responseHeaders: res.getHeaders()
+    });
+  });
+  
+  next();
 };
 
 module.exports = logger; 
