@@ -60,7 +60,6 @@ Thumbs.db
 *.out
 
 # Артефакты e2e тестов Playwright
-/tests/e2e/artifacts/
-/tests/e2e/artifacts/*.png
-/tests/e2e/artifacts/*.html
-/tests/e2e/artifacts/*.log 
+/tests/
+/test-results/*
+**/screenshot.png
