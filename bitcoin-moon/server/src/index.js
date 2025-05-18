@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
+const logger = require('./utils/logger');
 
 // Роуты
 const bitcoinRoutes = require('./routes/bitcoin');
@@ -18,6 +19,19 @@ const PORT = process.env.PORT || 5000;
 // Middlewares
 app.use(cors());
 app.use(express.json());
+
+// Логирование HTTP запросов
+app.use((req, res, next) => {
+  const start = Date.now();
+  
+  // Логируем запрос после завершения
+  res.on('finish', () => {
+    const responseTime = Date.now() - start;
+    logger.http(req, res, responseTime);
+  });
+  
+  next();
+});
 
 // API маршруты
 app.use('/api/bitcoin', bitcoinRoutes);
