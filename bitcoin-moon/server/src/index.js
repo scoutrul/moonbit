@@ -1,8 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-require('dotenv').config();
 const logger = require('./utils/logger');
+const config = require('./utils/config');
 const { requestLogger, errorHandler, notFoundHandler } = require('./utils/middlewares');
 
 // Роуты
@@ -15,10 +15,12 @@ const eventsRoutes = require('./routes/events');
 const DataSyncService = require('./services/DataSyncService');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
 // Global middlewares
-app.use(cors());
+app.use(cors({
+  origin: config.cors.origin,
+  optionsSuccessStatus: 200
+}));
 app.use(express.json());
 app.use(requestLogger);
 
@@ -34,7 +36,7 @@ app.get('/api/docs', (req, res) => {
 });
 
 // Отдача статичных файлов в production
-if (process.env.NODE_ENV === 'production') {
+if (config.server.env === 'production') {
   app.use(express.static(path.join(__dirname, '../../client/dist')));
   
   app.get('*', (req, res) => {
@@ -49,8 +51,11 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // Запуск сервера
-app.listen(PORT, () => {
-  logger.info(`Сервер запущен на порту ${PORT}`, { port: PORT });
+app.listen(config.server.port, () => {
+  logger.info(`Сервер запущен на порту ${config.server.port}`, { 
+    port: config.server.port,
+    env: config.server.env
+  });
   
   // Запуск периодического обновления данных
   DataSyncService.initialize();

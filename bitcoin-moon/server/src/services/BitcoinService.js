@@ -2,6 +2,7 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const logger = require('../utils/logger');
+const config = require('../utils/config');
 
 /**
  * Сервис для работы с данными о биткоине
@@ -9,10 +10,11 @@ const logger = require('../utils/logger');
  */
 class BitcoinService {
   constructor() {
-    this.cacheDir = path.join(__dirname, '../data/cache');
+    this.cacheDir = config.paths.cache;
     this.priceCacheFile = path.join(this.cacheDir, 'bitcoin_price.json');
     this.historicalCacheFile = path.join(this.cacheDir, 'bitcoin_historical.json');
     this.apiUrl = 'https://api.coingecko.com/api/v3';
+    this.apiKey = config.api.coingecko;
     
     // Проверяем/создаем директорию для кэша
     if (!fs.existsSync(this.cacheDir)) {
@@ -73,14 +75,19 @@ class BitcoinService {
     try {
       logger.debug('Запрос текущей цены биткоина из CoinGecko API');
       
-      const response = await axios.get(`${this.apiUrl}/simple/price`, {
-        params: {
-          ids: 'bitcoin',
-          vs_currencies: 'usd,eur,rub',
-          include_24hr_change: true,
-          include_last_updated_at: true
-        }
-      });
+      const params = {
+        ids: 'bitcoin',
+        vs_currencies: 'usd,eur,rub',
+        include_24hr_change: true,
+        include_last_updated_at: true
+      };
+      
+      // Добавляем API ключ, если он есть
+      if (this.apiKey) {
+        params.x_cg_pro_api_key = this.apiKey;
+      }
+      
+      const response = await axios.get(`${this.apiUrl}/simple/price`, { params });
       
       if (response.data && response.data.bitcoin) {
         const btcData = response.data.bitcoin;
@@ -122,13 +129,18 @@ class BitcoinService {
     try {
       logger.debug(`Запрос исторических данных биткоина за ${days} дней из CoinGecko API`);
       
-      const response = await axios.get(`${this.apiUrl}/coins/bitcoin/market_chart`, {
-        params: {
-          vs_currency: 'usd', // Основная валюта
-          days: days,
-          interval: 'daily'
-        }
-      });
+      const params = {
+        vs_currency: 'usd', // Основная валюта
+        days: days,
+        interval: 'daily'
+      };
+      
+      // Добавляем API ключ, если он есть
+      if (this.apiKey) {
+        params.x_cg_pro_api_key = this.apiKey;
+      }
+      
+      const response = await axios.get(`${this.apiUrl}/coins/bitcoin/market_chart`, { params });
       
       if (response.data && response.data.prices) {
         // Обработка и форматирование данных для USD

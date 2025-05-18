@@ -1,9 +1,10 @@
 const winston = require('winston');
 const path = require('path');
 const fs = require('fs');
+const config = require('./config');
 
 // Создаем директорию для логов, если она не существует
-const logDir = path.join(__dirname, '../../logs');
+const logDir = config.paths.logs;
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }
@@ -18,7 +19,7 @@ const logFormat = winston.format.combine(
 
 // Создаем логгер
 const logger = winston.createLogger({
-  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  level: config.logging.level,
   format: logFormat,
   defaultMeta: { service: 'moonbit-api' },
   transports: [
@@ -26,19 +27,19 @@ const logger = winston.createLogger({
     new winston.transports.File({ 
       filename: path.join(logDir, 'error.log'), 
       level: 'error',
-      maxsize: 5242880, // 5MB
+      maxsize: config.logging.fileMaxSize,
       maxFiles: 5
     }),
     new winston.transports.File({ 
       filename: path.join(logDir, 'combined.log'),
-      maxsize: 5242880, // 5MB
+      maxsize: config.logging.fileMaxSize,
       maxFiles: 10
     })
   ]
 });
 
 // Если не продакшн, то добавляем консольный транспорт с цветами
-if (process.env.NODE_ENV !== 'production') {
+if (config.server.env !== 'production') {
   logger.add(new winston.transports.Console({
     format: winston.format.combine(
       winston.format.colorize(),
@@ -66,7 +67,7 @@ if (process.env.NODE_ENV !== 'production') {
 logger.exceptions.handle(
   new winston.transports.File({ 
     filename: path.join(logDir, 'exceptions.log'),
-    maxsize: 5242880, // 5MB
+    maxsize: config.logging.fileMaxSize,
     maxFiles: 5 
   })
 );

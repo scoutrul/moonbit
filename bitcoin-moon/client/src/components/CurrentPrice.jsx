@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { BitcoinService } from '../services';
 
 const CurrentPrice = () => {
-  const [price, setPrice] = useState(null);
-  const [change24h, setChange24h] = useState(null);
+  const [priceData, setPriceData] = useState({
+    price: null,
+    change_24h: null,
+    change_percentage_24h: null,
+    currency: 'usd',
+    last_updated: null
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -11,9 +16,8 @@ const CurrentPrice = () => {
     const fetchPrice = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('/api/bitcoin/price');
-        setPrice(response.data.price);
-        setChange24h(response.data.change24h);
+        const data = await BitcoinService.getCurrentPrice('usd');
+        setPriceData(data);
         setError(null);
       } catch (err) {
         console.error('Ошибка при получении цены:', err);
@@ -34,22 +38,34 @@ const CurrentPrice = () => {
   const formatPrice = (price) => {
     return new Intl.NumberFormat('ru-RU', {
       style: 'currency',
-      currency: 'USD',
+      currency: priceData.currency.toUpperCase(),
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(price);
   };
 
-  const renderChange = () => {
-    if (!change24h) return null;
+  const formatLastUpdated = (timestamp) => {
+    if (!timestamp) return '';
     
-    const isPositive = change24h >= 0;
+    const date = new Date(timestamp);
+    return new Intl.DateTimeFormat('ru-RU', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }).format(date);
+  };
+
+  const renderChange = () => {
+    const change = priceData.change_percentage_24h;
+    if (!change) return null;
+    
+    const isPositive = change >= 0;
     
     return (
       <span 
         className={`ml-2 ${isPositive ? 'text-green-500' : 'text-red-500'}`}
       >
-        {isPositive ? '▲' : '▼'} {Math.abs(change24h).toFixed(2)}%
+        {isPositive ? '▲' : '▼'} {Math.abs(change).toFixed(2)}%
       </span>
     );
   };
@@ -79,9 +95,16 @@ const CurrentPrice = () => {
         <div>
           <h2 className="text-lg font-semibold">Bitcoin</h2>
           <div className="flex items-center">
-            <span className="text-2xl font-bold">{price ? formatPrice(price) : '--'}</span>
+            <span className="text-2xl font-bold">
+              {priceData.price ? formatPrice(priceData.price) : '--'}
+            </span>
             {renderChange()}
           </div>
+          {priceData.last_updated && (
+            <div className="text-xs text-gray-500 mt-1">
+              Обновлено: {formatLastUpdated(priceData.last_updated)}
+            </div>
+          )}
         </div>
       </div>
     </div>

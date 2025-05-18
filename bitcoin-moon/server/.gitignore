@@ -1,0 +1,35 @@
+# Игнорируем node_modules
+node_modules/
+
+# Игнорируем логи
+logs/
+*.log
+npm-debug.log*
+
+# Игнорируем файлы окружения
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Игнорируем кэш
+src/data/cache/
+
+# Игнорируем директории сборки
+dist/
+build/
+
+# Игнорируем файлы операционной системы
+.DS_Store
+Thumbs.db
+
+# Игнорируем файлы редакторов
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Игнорируем директории для тестирования и покрытия
+coverage/
+.nyc_output/ 
