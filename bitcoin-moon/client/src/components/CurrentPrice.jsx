@@ -57,7 +57,7 @@ const CurrentPrice = () => {
   if (loading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
-        <div className="animate-pulse flex items-center">
+        <div className="animate-pulse flex items-center" data-testid="loading-skeleton">
           <div className="h-10 w-48 bg-gray-200 dark:bg-gray-700 rounded"></div>
         </div>
       </div>
