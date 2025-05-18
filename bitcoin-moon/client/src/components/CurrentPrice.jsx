@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BitcoinService } from '../services';
+import BitcoinService from '../services/BitcoinService';
 
 const CurrentPrice = () => {
   const [priceData, setPriceData] = useState({
@@ -16,7 +16,7 @@ const CurrentPrice = () => {
     const fetchPrice = async () => {
       try {
         setLoading(true);
-        const data = await BitcoinService.getCurrentPrice('usd');
+        const data = await BitcoinService.getCurrentPrice(priceData.currency);
         setPriceData(data);
         setError(null);
       } catch (err) {
@@ -33,9 +33,11 @@ const CurrentPrice = () => {
     const interval = setInterval(fetchPrice, 60000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [priceData.currency]);
 
   const formatPrice = (price) => {
+    if (price === null) return '--';
+    
     return new Intl.NumberFormat('ru-RU', {
       style: 'currency',
       currency: priceData.currency.toUpperCase(),
@@ -57,33 +59,34 @@ const CurrentPrice = () => {
 
   const renderChange = () => {
     const change = priceData.change_percentage_24h;
-    if (!change) return null;
+    if (change === null) return null;
     
     const isPositive = change >= 0;
+    const changeValue = Math.abs(change).toFixed(2);
     
     return (
       <span 
         className={`ml-2 ${isPositive ? 'text-green-500' : 'text-red-500'}`}
+        title={`Изменение за 24 часа: ${isPositive ? '+' : '-'}${changeValue}%`}
       >
-        {isPositive ? '▲' : '▼'} {Math.abs(change).toFixed(2)}%
+        {isPositive ? '▲' : '▼'} {changeValue}%
       </span>
     );
   };
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
-        <div className="animate-pulse flex items-center" data-testid="loading-skeleton">
-          <div className="h-10 w-48 bg-gray-200 dark:bg-gray-700 rounded"></div>
-        </div>
+      <div data-testid="loading-skeleton" className="animate-pulse">
+        <div className="h-8 bg-gray-200 rounded w-32 mb-2"></div>
+        <div className="h-6 bg-gray-200 rounded w-24"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
-        <div className="text-red-500">{error}</div>
+      <div data-testid="error-message" className="text-red-500">
+        {error}
       </div>
     );
   }
@@ -91,17 +94,25 @@ const CurrentPrice = () => {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
       <div className="flex items-center">
-        <img src="/bitcoin-icon.svg" alt="Bitcoin" className="h-10 w-10 mr-3" />
+        <img 
+          src="/bitcoin-icon.svg" 
+          alt="Bitcoin" 
+          className="h-10 w-10 mr-3"
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0iI2Y3OTMxYSI+PHBhdGggZD0iTTE1LjMgMjEuNGMtLjIgMS4yLTEuNyAxLjUtMy4yIDEuMWwuNyAyLjZjMi4xLjUgNC40LS4yIDQuOS0yLjMuNS0yLjEtMS4yLTMuMi0zLjMtMy45bC43LTIuNmMxLjUuNCAzIC43IDMuMi0uNS4yLTEuMi0xLjEtMS44LTIuNi0yLjJsLjctMi42LTEuNy0uNS0uNyAyLjZjLS40LS4xLS45LS4yLTEuMy0uM2wuNy0yLjYtMS43LS41LS43IDIuNmMtLjQtLjEtLjctLjItMS4xLS4zbC45LTMuNC0xLjctLjUtLjcgMi42Yy0yLjEtLjUtNC40LjItNC45IDIuMy0uNSAyLjEgMS4yIDMuMiAzLjMgMy45bC0uNyAyLjZjLTEuNS0uNC0zLS43LTMuMi41LS4yIDEuMiAxLjEgMS44IDIuNiAyLjJsLS43IDIuNiAxLjcuNS43LTIuNmMuNC4xLjkuMiAxLjMuM2wtLjcgMi42IDEuNy41LjctMi42Yy40LjEuNy4yIDEuMS4zbC0uOSAzLjQgMS43LjUuNy0yLjZ6Ii8+PC9zdmc+';
+          }}
+        />
         <div>
           <h2 className="text-lg font-semibold">Bitcoin</h2>
           <div className="flex items-center">
-            <span className="text-2xl font-bold">
-              {priceData.price ? formatPrice(priceData.price) : '--'}
+            <span data-testid="bitcoin-price" className="text-2xl font-bold">
+              {formatPrice(priceData.price)}
             </span>
             {renderChange()}
           </div>
           {priceData.last_updated && (
-            <div className="text-xs text-gray-500 mt-1">
+            <div data-testid="last-updated" className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Обновлено: {formatLastUpdated(priceData.last_updated)}
             </div>
           )}

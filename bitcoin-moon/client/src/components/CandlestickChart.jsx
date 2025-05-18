@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createChart } from 'lightweight-charts';
-import axios from 'axios';
+import BitcoinService from '../services/BitcoinService';
 
 const CandlestickChart = ({ timeframe }) => {
   const chartContainerRef = useRef(null);
@@ -118,14 +118,7 @@ const CandlestickChart = ({ timeframe }) => {
         setLoading(true);
         setError(null);
         
-        const response = await axios.get(`/api/bitcoin/candles?timeframe=${timeframe}`);
-        const data = response.data.map(d => ({
-          time: d.time,
-          open: d.open,
-          high: d.high,
-          low: d.low,
-          close: d.close,
-        }));
+        const data = await BitcoinService.getCandlestickData(timeframe);
         
         candlestickSeriesRef.current.setData(data);
         
@@ -148,27 +141,23 @@ const CandlestickChart = ({ timeframe }) => {
     return () => clearInterval(interval);
   }, [timeframe]);
 
-  return (
-    <div>
-      {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-gray-900/50 z-10">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-        </div>
-      )}
-      
-      {error && (
-        <div className="text-center text-red-500 my-4">
-          {error}
-        </div>
-      )}
-      
-      <div
-        ref={chartContainerRef}
-        className="w-full relative"
-        style={{ height: '400px' }}
-      />
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="animate-pulse">
+        <div className="h-[400px] bg-gray-200 dark:bg-gray-700 rounded"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="h-[400px] flex items-center justify-center">
+        <div className="text-red-500">{error}</div>
+      </div>
+    );
+  }
+
+  return <div ref={chartContainerRef} />;
 };
 
 export default CandlestickChart; 

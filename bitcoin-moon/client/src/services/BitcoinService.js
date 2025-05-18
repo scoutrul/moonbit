@@ -14,7 +14,14 @@ class BitcoinService {
    */
   async getCurrentPrice(currency = 'usd') {
     try {
-      return await api.get('/bitcoin/current', { currency });
+      const response = await api.get('/bitcoin/current', { params: { currency } });
+      return {
+        price: Number(response.price),
+        currency: response.currency,
+        last_updated: response.last_updated,
+        change_24h: Number(response.change_24h),
+        change_percentage_24h: Number(response.change_percentage_24h)
+      };
     } catch (error) {
       console.error('Ошибка при получении текущей цены биткоина:', error);
       throw error;
@@ -29,12 +36,43 @@ class BitcoinService {
    */
   async getHistoricalData(currency = 'usd', days = 30) {
     try {
-      return await api.get('/bitcoin/history', { currency, days });
+      const response = await api.get('/bitcoin/history', { params: { currency, days } });
+      return {
+        currency,
+        days,
+        data: response.data.map(point => ({
+          date: point.date,
+          price: Number(point.price)
+        }))
+      };
     } catch (error) {
       console.error('Ошибка при получении исторических данных биткоина:', error);
       throw error;
     }
   }
+
+  /**
+   * Получает данные для свечного графика
+   * @param {string} timeframe - Временной интервал (1h, 1d, 1w)
+   * @returns {Promise<Array>} Массив с данными для свечного графика
+   */
+  async getCandlestickData(timeframe = '1d') {
+    try {
+      const response = await api.get('/bitcoin/candles', { params: { timeframe } });
+      return response.map(candle => ({
+        time: new Date(candle.time).getTime() / 1000,
+        open: Number(candle.open),
+        high: Number(candle.high),
+        low: Number(candle.low),
+        close: Number(candle.close),
+        volume: Number(candle.volume || 0)
+      }));
+    } catch (error) {
+      console.error('Ошибка при получении данных для свечного графика:', error);
+      throw error;
+    }
+  }
 }
 
+// Экспортируем синглтон
 export default new BitcoinService(); 

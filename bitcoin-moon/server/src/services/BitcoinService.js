@@ -4,6 +4,25 @@ const path = require('path');
 const logger = require('../utils/logger');
 const config = require('../utils/config');
 
+const USE_MOCK = process.env.USE_MOCK_DATA === 'true' || !config.api.coingecko;
+
+function getRandomPrice(base = 60000, spread = 5000) {
+  return Math.round((base + (Math.random() - 0.5) * spread) * 100) / 100;
+}
+
+function getMockHistory(days = 30) {
+  const now = new Date();
+  const data = [];
+  let price = 60000;
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date(now);
+    date.setDate(now.getDate() - i);
+    price += (Math.random() - 0.5) * 1000;
+    data.push({ date: date.toISOString().split('T')[0], price: Math.round(price * 100) / 100 });
+  }
+  return data;
+}
+
 /**
  * Сервис для работы с данными о биткоине
  * Получает данные из CoinGecko API и кэширует их
@@ -72,6 +91,17 @@ class BitcoinService {
    * @returns {Promise<Object>} Обновленные данные о цене
    */
   async updatePriceData() {
+    if (USE_MOCK) {
+      logger.info('Возвращаю мок-данные для текущей цены биткоина');
+      const now = new Date().toISOString();
+      this.priceCache.usd = {
+        price: getRandomPrice(),
+        last_updated: now,
+        change_24h: Math.round((Math.random() - 0.5) * 1000) / 100,
+        change_percentage_24h: Math.round((Math.random() - 0.5) * 10 * 100) / 100
+      };
+      return this.priceCache;
+    }
     try {
       logger.debug('Запрос текущей цены биткоина из CoinGecko API');
       
@@ -126,6 +156,14 @@ class BitcoinService {
    * @returns {Promise<Object>} Обновленные исторические данные
    */
   async updateHistoricalData(days = 365) {
+    if (USE_MOCK) {
+      logger.info('Возвращаю мок-данные для истории биткоина');
+      this.historicalCache.usd = {
+        data: getMockHistory(days),
+        last_updated: new Date().toISOString()
+      };
+      return this.historicalCache;
+    }
     try {
       logger.debug(`Запрос исторических данных биткоина за ${days} дней из CoinGecko API`);
       
@@ -182,7 +220,18 @@ class BitcoinService {
     if (!['usd', 'eur', 'rub'].includes(currency)) {
       currency = 'usd';
     }
-    
+
+    if (USE_MOCK) {
+      const now = new Date().toISOString();
+      return {
+        price: getRandomPrice(),
+        currency,
+        last_updated: now,
+        change_24h: Math.round((Math.random() - 0.5) * 1000) / 100,
+        change_percentage_24h: Math.round((Math.random() - 0.5) * 10 * 100) / 100
+      };
+    }
+
     const cacheData = this.priceCache[currency];
     
     // Если данные устарели (более 15 минут), запускаем обновление
@@ -216,10 +265,13 @@ class BitcoinService {
     if (!['usd', 'eur', 'rub'].includes(currency)) {
       currency = 'usd';
     }
-    
     if (days > 365) days = 365;
     if (days < 1) days = 1;
-    
+
+    if (USE_MOCK) {
+      return getMockHistory(days);
+    }
+
     const cacheData = this.historicalCache[currency];
     
     // Если данных нет или они устарели (более 6 часов), запускаем обновление

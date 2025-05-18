@@ -1,8 +1,11 @@
+const fs = require('fs');
+const path = require('path');
 const logger = require('../utils/logger');
 const bitcoinService = require('./BitcoinService');
 const moonService = require('./MoonService');
 const astroService = require('./AstroService');
 const eventsService = require('./EventsService');
+const config = require('../utils/config');
 
 /**
  * Сервис синхронизации данных
@@ -10,23 +13,44 @@ const eventsService = require('./EventsService');
  */
 class DataSyncService {
   constructor() {
-    // Интервалы обновления для разных типов данных в миллисекундах
+    this.initialized = false;
     this.syncIntervals = {
-      bitcoin: null,   // 5 минут
-      moon: null,      // 1 час
-      astro: null,     // 6 часов
-      events: null     // 30 минут
+      bitcoin: 5 * 60 * 1000,   // 5 минут
+      moon: 60 * 60 * 1000,    // 1 час
+      astro: 12 * 60 * 60 * 1000, // 12 часов
+      events: 30 * 60 * 1000    // 30 минут
     };
     
     this.intervalTimes = {
       bitcoin: 5 * 60 * 1000,
       moon: 60 * 60 * 1000,
-      astro: 6 * 60 * 60 * 1000,
+      astro: 12 * 60 * 60 * 1000,
       events: 30 * 60 * 1000
     };
     
-    // Флаг инициализации
-    this.initialized = false;
+    // Создаем необходимые директории при инициализации
+    this.createDirectories();
+  }
+  
+  /**
+   * Создает необходимые директории
+   */
+  createDirectories() {
+    const directories = [
+      config.paths.logs,
+      config.paths.cache
+    ];
+
+    directories.forEach(dir => {
+      if (!fs.existsSync(dir)) {
+        try {
+          fs.mkdirSync(dir, { recursive: true });
+          logger.info(`Создана директория: ${dir}`);
+        } catch (error) {
+          logger.error(`Ошибка при создании директории ${dir}:`, { error });
+        }
+      }
+    });
   }
   
   /**
@@ -62,36 +86,28 @@ class DataSyncService {
     logger.info('Запуск периодической синхронизации данных');
     
     // Bitcoin данные - каждые 5 минут
-    this.syncIntervals.bitcoin = setInterval(
-      () => this.syncBitcoinData().catch(error => {
-        logger.error('Ошибка при синхронизации Bitcoin данных', { error });
-      }),
-      this.intervalTimes.bitcoin
-    );
+    setInterval(() => {
+      this.syncBitcoinData()
+        .catch(error => logger.error('Ошибка при синхронизации данных биткоина', { error }));
+    }, this.intervalTimes.bitcoin);
     
     // Данные о луне - каждый час
-    this.syncIntervals.moon = setInterval(
-      () => this.syncMoonData().catch(error => {
-        logger.error('Ошибка при синхронизации данных о луне', { error });
-      }),
-      this.intervalTimes.moon
-    );
+    setInterval(() => {
+      this.syncMoonData()
+        .catch(error => logger.error('Ошибка при синхронизации данных луны', { error }));
+    }, this.intervalTimes.moon);
     
-    // Астрологические данные - каждые 6 часов
-    this.syncIntervals.astro = setInterval(
-      () => this.syncAstroData().catch(error => {
-        logger.error('Ошибка при синхронизации астрологических данных', { error });
-      }),
-      this.intervalTimes.astro
-    );
+    // Астрологические данные - каждые 12 часов
+    setInterval(() => {
+      this.syncAstroData()
+        .catch(error => logger.error('Ошибка при синхронизации астрологических данных', { error }));
+    }, this.intervalTimes.astro);
     
     // События - каждые 30 минут
-    this.syncIntervals.events = setInterval(
-      () => this.syncEventsData().catch(error => {
-        logger.error('Ошибка при синхронизации данных о событиях', { error });
-      }),
-      this.intervalTimes.events
-    );
+    setInterval(() => {
+      this.syncEventsData()
+        .catch(error => logger.error('Ошибка при синхронизации данных событий', { error }));
+    }, this.intervalTimes.events);
     
     logger.info('Периодическая синхронизация данных успешно запущена');
   }
@@ -172,7 +188,7 @@ class DataSyncService {
     
     try {
       // Обновляем данные о фазах луны
-      const moonData = await moonService.updateMoonPhases();
+      const moonData = await moonService.updatePhaseData();
       
       logger.info('Данные о фазах луны успешно синхронизированы', {
         dataUpdated: !!moonData
@@ -216,7 +232,7 @@ class DataSyncService {
     
     try {
       // Обновляем данные о событиях
-      const eventsData = await eventsService.updateEvents();
+      const eventsData = await eventsService.updateEventsData();
       
       logger.info('Данные о событиях успешно синхронизированы', {
         dataUpdated: !!eventsData

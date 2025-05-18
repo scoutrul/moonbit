@@ -12,16 +12,21 @@ class ApiService {
   /**
    * Выполняет GET запрос к API
    * @param {string} endpoint - Конечная точка API
-   * @param {Object} params - Параметры запроса
+   * @param {Object} options - Опции запроса
+   * @param {Object} options.params - Параметры запроса
    * @returns {Promise<any>} Результат запроса
    */
-  async get(endpoint, params = {}) {
+  async get(endpoint, options = {}) {
     const url = new URL(`${API_BASE_URL}${endpoint}`);
     
     // Добавляем параметры запроса в URL
-    Object.keys(params).forEach(key => {
-      url.searchParams.append(key, params[key]);
-    });
+    if (options.params) {
+      Object.entries(options.params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          url.searchParams.append(key, value);
+        }
+      });
+    }
     
     try {
       const response = await fetch(url.toString(), {
@@ -29,11 +34,15 @@ class ApiService {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
-        }
+        },
+        credentials: 'same-origin'
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+        const error = await response.json().catch(() => ({
+          message: response.statusText
+        }));
+        throw new Error(error.message || `HTTP error ${response.status}`);
       }
       
       return await response.json();
@@ -72,4 +81,5 @@ class ApiService {
   }
 }
 
+// Экспортируем синглтон
 export default new ApiService(); 

@@ -9,6 +9,21 @@ const {
   findNextSignificantPhases 
 } = require('../utils/moonCalculations');
 
+const config = require('../utils/config');
+const USE_MOCK = process.env.USE_MOCK_DATA === 'true' || !config.api.farmsense;
+
+function getMockMoonPhases(days = 30) {
+  const now = new Date();
+  const data = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date(now);
+    date.setDate(now.getDate() - i);
+    const phase = Math.abs(Math.sin(i / days * Math.PI));
+    data.push({ date: date.toISOString().split('T')[0], phase, phaseName: `Фаза ${i}` });
+  }
+  return data;
+}
+
 /**
  * Сервис для работы с данными о фазах луны
  * Получает данные из FarmSense API и кэширует их
@@ -121,6 +136,20 @@ class MoonService {
    * @returns {Promise<Object>} Обновленные данные о фазах
    */
   async updateMoonPhases() {
+    if (USE_MOCK) {
+      logger.info('Возвращаю мок-данные для фаз луны');
+      const now = new Date();
+      this.phasesCache = {
+        current: {
+          date: now.toISOString(),
+          phase: 0.5,
+          phaseName: 'Полнолуние'
+        },
+        phases: getMockMoonPhases(10),
+        last_updated: now.toISOString()
+      };
+      return this.phasesCache;
+    }
     try {
       logger.debug('Обновление данных о фазах луны');
       
