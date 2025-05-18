@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 
 /**
  * Панель разработчика для отладки приложения
- * Отображается только в режиме разработки (process.env.NODE_ENV !== 'production')
+ * Отображается только в режиме разработки (import.meta.env.MODE !== 'production')
  */
 function DevPanel() {
   const [isVisible, setIsVisible] = useState(false);
@@ -20,7 +20,7 @@ function DevPanel() {
   });
 
   // Проверяем, что мы не в продакшене
-  const isProduction = process.env.NODE_ENV === 'production';
+  const isProduction = import.meta.env.MODE === 'production';
 
   useEffect(() => {
     if (isProduction) return;

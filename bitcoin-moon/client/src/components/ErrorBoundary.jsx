@@ -88,7 +88,7 @@ class ErrorBoundary extends Component {
             this.props.fallback
           ) : (
             <div>
-              {process.env.NODE_ENV !== 'production' && (
+              {import.meta.env.MODE !== 'production' && (
                 <details className="mt-2 text-sm">
                   <summary className="cursor-pointer font-bold">Технические детали ошибки</summary>
                   <p className="mt-2">{this.state.error && this.state.error.toString()}</p>
