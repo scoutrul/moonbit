@@ -1,0 +1,26 @@
+{
+  "name": "moonbit",
+  "version": "1.0.0",
+  "description": "Анализ взаимосвязи между биткоином и лунными фазами",
+  "main": "index.js",
+  "scripts": {
+    "client": "cd bitcoin-moon/client && npm run dev",
+    "server": "cd bitcoin-moon/server && npm run dev",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "install:all": "npm install && cd bitcoin-moon/client && npm install && cd ../server && npm install",
+    "test:client": "cd bitcoin-moon/client && npm test",
+    "test:server": "cd bitcoin-moon/server && npm test",
+    "test": "npm run test:server && npm run test:client",
+    "build:client": "cd bitcoin-moon/client && npm run build",
+    "build:server": "cd bitcoin-moon/server && npm run build",
+    "build": "npm run build:server && npm run build:client",
+    "lint:client": "cd bitcoin-moon/client && npm run lint",
+    "lint:server": "cd bitcoin-moon/server && npm run lint",
+    "lint": "npm run lint:server && npm run lint:client"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+} 
