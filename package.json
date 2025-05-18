@@ -14,6 +14,7 @@
     "build:client": "cd bitcoin-moon/client && npm run build",
     "build:server": "cd bitcoin-moon/server && npm run build",
     "build": "npm run build:server && npm run build:client",
+    "start:prod": "cd bitcoin-moon/server && npm run start",
     "lint:client": "cd bitcoin-moon/client && npm run lint",
     "lint:server": "cd bitcoin-moon/server && npm run lint",
     "lint": "npm run lint:server && npm run lint:client",

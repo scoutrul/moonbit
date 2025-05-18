@@ -1,0 +1,35 @@
+# Зависимости
+node_modules
+bitcoin-moon/client/node_modules
+bitcoin-moon/server/node_modules
+
+# Логи
+logs
+bitcoin-moon/server/logs
+
+# Файлы разработки
+.git
+.github
+.vscode
+.idea
+.DS_Store
+
+# Сборки
+bitcoin-moon/client/dist
+bitcoin-moon/server/dist
+
+# Файлы окружения
+.env
+bitcoin-moon/server/.env
+bitcoin-moon/client/.env
+
+# Временные файлы
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.pnpm-debug.log
+
+# Тесты
+bitcoin-moon/client/__tests__
+bitcoin-moon/server/__tests__
+coverage 
