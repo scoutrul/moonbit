@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MoonBit API Documentation</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .method-get { background-color: #10B981; }
+    .method-post { background-color: #3B82F6; }
+    .method-put { background-color: #F59E0B; }
+    .method-delete { background-color: #EF4444; }
+    pre { overflow-x: auto; }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-8">MoonBit API Documentation</h1>
+    
+    <div class="mb-12">
+      <h2 class="text-2xl font-bold mb-4">Введение</h2>
+      <p class="mb-4">
+        API MoonBit предоставляет доступ к данным о цене биткоина, фазах луны, астрологических событиях 
+        и их потенциальных корреляциях. Все запросы выполняются через HTTP и возвращают данные в формате JSON.
+      </p>
+      <p class="mb-4">
+        Базовый URL: <code class="bg-gray-200 px-2 py-1 rounded">http://localhost:5000/api</code>
+      </p>
+    </div>
+    
+    <div class="mb-12">
+      <h2 class="text-2xl font-bold mb-4">Аутентификация</h2>
+      <p class="mb-4">
+        В текущей версии API не требует аутентификации.
+      </p>
+    </div>
+    
+    <!-- Bitcoin API -->
+    <div class="mb-12">
+      <h2 class="text-2xl font-bold mb-4">Bitcoin API</h2>
+      
+      <div class="bg-white rounded-lg shadow mb-6 overflow-hidden">
+        <div class="border-b p-4 flex items-center">
+          <span class="method-get px-2 py-1 rounded text-white font-bold mr-3">GET</span>
+          <code class="text-lg">/api/bitcoin/current</code>
+        </div>
+        <div class="p-4">
+          <h3 class="font-bold mb-2">Получить текущую цену биткоина</h3>
+          <p class="mb-4">Возвращает текущую цену биткоина в указанной валюте.</p>
+          
+          <h4 class="font-bold mt-4 mb-2">Параметры запроса</h4>
+          <table class="w-full mb-4">
+            <thead class="bg-gray-100">
+              <tr>
+                <th class="py-2 px-4 text-left">Параметр</th>
+                <th class="py-2 px-4 text-left">Тип</th>
+                <th class="py-2 px-4 text-left">Обязательный</th>
+                <th class="py-2 px-4 text-left">Описание</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="py-2 px-4 border-t">currency</td>
+                <td class="py-2 px-4 border-t">string</td>
+                <td class="py-2 px-4 border-t">Нет</td>
+                <td class="py-2 px-4 border-t">Валюта (usd, eur, rub). По умолчанию: usd</td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <h4 class="font-bold mt-4 mb-2">Пример ответа</h4>
+          <pre class="bg-gray-100 p-4 rounded">
+{
+  "price": 55123.45,
+  "currency": "usd",
+  "last_updated": "2023-05-18T12:34:56Z",
+  "change_24h": 1250.75,
+  "change_percentage_24h": 2.32
+}
+          </pre>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-lg shadow mb-6 overflow-hidden">
+        <div class="border-b p-4 flex items-center">
+          <span class="method-get px-2 py-1 rounded text-white font-bold mr-3">GET</span>
+          <code class="text-lg">/api/bitcoin/history</code>
+        </div>
+        <div class="p-4">
+          <h3 class="font-bold mb-2">Получить историю цен биткоина</h3>
+          <p class="mb-4">Возвращает историю цен биткоина за указанный период.</p>
+          
+          <h4 class="font-bold mt-4 mb-2">Параметры запроса</h4>
+          <table class="w-full mb-4">
+            <thead class="bg-gray-100">
+              <tr>
+                <th class="py-2 px-4 text-left">Параметр</th>
+                <th class="py-2 px-4 text-left">Тип</th>
+                <th class="py-2 px-4 text-left">Обязательный</th>
+                <th class="py-2 px-4 text-left">Описание</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="py-2 px-4 border-t">days</td>
+                <td class="py-2 px-4 border-t">integer</td>
+                <td class="py-2 px-4 border-t">Нет</td>
+                <td class="py-2 px-4 border-t">Количество дней (от 1 до 365). По умолчанию: 30</td>
+              </tr>
+              <tr>
+                <td class="py-2 px-4 border-t">currency</td>
+                <td class="py-2 px-4 border-t">string</td>
+                <td class="py-2 px-4 border-t">Нет</td>
+                <td class="py-2 px-4 border-t">Валюта (usd, eur, rub). По умолчанию: usd</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Moon API -->
+    <div class="mb-12">
+      <h2 class="text-2xl font-bold mb-4">Moon API</h2>
+      
+      <div class="bg-white rounded-lg shadow mb-6 overflow-hidden">
+        <div class="border-b p-4 flex items-center">
+          <span class="method-get px-2 py-1 rounded text-white font-bold mr-3">GET</span>
+          <code class="text-lg">/api/moon/current</code>
+        </div>
+        <div class="p-4">
+          <h3 class="font-bold mb-2">Получить текущую фазу луны</h3>
+          <p class="mb-4">Возвращает информацию о текущей фазе луны.</p>
+          
+          <h4 class="font-bold mt-4 mb-2">Пример ответа</h4>
+          <pre class="bg-gray-100 p-4 rounded">
+{
+  "date": "2023-05-18T12:34:56Z",
+  "phase": 0.35,
+  "phaseName": "Растущая луна (горб)"
+}
+          </pre>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-lg shadow mb-6 overflow-hidden">
+        <div class="border-b p-4 flex items-center">
+          <span class="method-get px-2 py-1 rounded text-white font-bold mr-3">GET</span>
+          <code class="text-lg">/api/moon/period</code>
+        </div>
+        <div class="p-4">
+          <h3 class="font-bold mb-2">Получить фазы луны за период</h3>
+          <p class="mb-4">Возвращает информацию о фазах луны за указанный период.</p>
+          
+          <h4 class="font-bold mt-4 mb-2">Параметры запроса</h4>
+          <table class="w-full mb-4">
+            <thead class="bg-gray-100">
+              <tr>
+                <th class="py-2 px-4 text-left">Параметр</th>
+                <th class="py-2 px-4 text-left">Тип</th>
+                <th class="py-2 px-4 text-left">Обязательный</th>
+                <th class="py-2 px-4 text-left">Описание</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="py-2 px-4 border-t">startDate</td>
+                <td class="py-2 px-4 border-t">string</td>
+                <td class="py-2 px-4 border-t">Да</td>
+                <td class="py-2 px-4 border-t">Начальная дата в формате YYYY-MM-DD</td>
+              </tr>
+              <tr>
+                <td class="py-2 px-4 border-t">endDate</td>
+                <td class="py-2 px-4 border-t">string</td>
+                <td class="py-2 px-4 border-t">Да</td>
+                <td class="py-2 px-4 border-t">Конечная дата в формате YYYY-MM-DD</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-lg shadow mb-6 overflow-hidden">
+        <div class="border-b p-4 flex items-center">
+          <span class="method-get px-2 py-1 rounded text-white font-bold mr-3">GET</span>
+          <code class="text-lg">/api/moon/next</code>
+        </div>
+        <div class="p-4">
+          <h3 class="font-bold mb-2">Получить следующие значимые фазы луны</h3>
+          <p class="mb-4">Возвращает информацию о следующих значимых фазах луны (новолуние и полнолуние).</p>
+          
+          <h4 class="font-bold mt-4 mb-2">Параметры запроса</h4>
+          <table class="w-full mb-4">
+            <thead class="bg-gray-100">
+              <tr>
+                <th class="py-2 px-4 text-left">Параметр</th>
+                <th class="py-2 px-4 text-left">Тип</th>
+                <th class="py-2 px-4 text-left">Обязательный</th>
+                <th class="py-2 px-4 text-left">Описание</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="py-2 px-4 border-t">count</td>
+                <td class="py-2 px-4 border-t">integer</td>
+                <td class="py-2 px-4 border-t">Нет</td>
+                <td class="py-2 px-4 border-t">Количество фаз (от 1 до 10). По умолчанию: 4</td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <h4 class="font-bold mt-4 mb-2">Пример ответа</h4>
+          <pre class="bg-gray-100 p-4 rounded">
+[
+  {
+    "date": "2023-05-20T12:34:56Z",
+    "type": "Новолуние",
+    "phase": 0
+  },
+  {
+    "date": "2023-06-04T12:34:56Z",
+    "type": "Полнолуние",
+    "phase": 0.5
+  }
+]
+          </pre>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Astro API -->
+    <div class="mb-12">
+      <h2 class="text-2xl font-bold mb-4">Astro API</h2>
+      
+      <div class="bg-white rounded-lg shadow mb-6 overflow-hidden">
+        <div class="border-b p-4 flex items-center">
+          <span class="method-get px-2 py-1 rounded text-white font-bold mr-3">GET</span>
+          <code class="text-lg">/api/astro/events</code>
+        </div>
+        <div class="p-4">
+          <h3 class="font-bold mb-2">Получить астрологические события</h3>
+          <p class="mb-4">Возвращает список астрологических событий за указанный период.</p>
+          
+          <h4 class="font-bold mt-4 mb-2">Параметры запроса</h4>
+          <table class="w-full mb-4">
+            <thead class="bg-gray-100">
+              <tr>
+                <th class="py-2 px-4 text-left">Параметр</th>
+                <th class="py-2 px-4 text-left">Тип</th>
+                <th class="py-2 px-4 text-left">Обязательный</th>
+                <th class="py-2 px-4 text-left">Описание</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="py-2 px-4 border-t">startDate</td>
+                <td class="py-2 px-4 border-t">string</td>
+                <td class="py-2 px-4 border-t">Нет</td>
+                <td class="py-2 px-4 border-t">Начальная дата в формате YYYY-MM-DD. По умолчанию: текущая дата</td>
+              </tr>
+              <tr>
+                <td class="py-2 px-4 border-t">endDate</td>
+                <td class="py-2 px-4 border-t">string</td>
+                <td class="py-2 px-4 border-t">Нет</td>
+                <td class="py-2 px-4 border-t">Конечная дата в формате YYYY-MM-DD. По умолчанию: +30 дней от startDate</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Events API -->
+    <div class="mb-12">
+      <h2 class="text-2xl font-bold mb-4">Events API</h2>
+      
+      <div class="bg-white rounded-lg shadow mb-6 overflow-hidden">
+        <div class="border-b p-4 flex items-center">
+          <span class="method-get px-2 py-1 rounded text-white font-bold mr-3">GET</span>
+          <code class="text-lg">/api/events/recent</code>
+        </div>
+        <div class="p-4">
+          <h3 class="font-bold mb-2">Получить недавние события</h3>
+          <p class="mb-4">Возвращает список последних событий, связанных с биткоином.</p>
+          
+          <h4 class="font-bold mt-4 mb-2">Параметры запроса</h4>
+          <table class="w-full mb-4">
+            <thead class="bg-gray-100">
+              <tr>
+                <th class="py-2 px-4 text-left">Параметр</th>
+                <th class="py-2 px-4 text-left">Тип</th>
+                <th class="py-2 px-4 text-left">Обязательный</th>
+                <th class="py-2 px-4 text-left">Описание</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="py-2 px-4 border-t">limit</td>
+                <td class="py-2 px-4 border-t">integer</td>
+                <td class="py-2 px-4 border-t">Нет</td>
+                <td class="py-2 px-4 border-t">Количество событий (от 1 до 100). По умолчанию: 5</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <div class="mb-12">
+      <h2 class="text-2xl font-bold mb-4">Коды ошибок</h2>
+      <table class="w-full">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="py-2 px-4 text-left">Код</th>
+            <th class="py-2 px-4 text-left">Описание</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="py-2 px-4 border-t">400</td>
+            <td class="py-2 px-4 border-t">Некорректный запрос. Проверьте параметры запроса.</td>
+          </tr>
+          <tr>
+            <td class="py-2 px-4 border-t">404</td>
+            <td class="py-2 px-4 border-t">Ресурс не найден.</td>
+          </tr>
+          <tr>
+            <td class="py-2 px-4 border-t">500</td>
+            <td class="py-2 px-4 border-t">Внутренняя ошибка сервера.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <footer class="text-center py-4 text-gray-500">
+      <p>MoonBit API Documentation &copy; 2023</p>
+    </footer>
+  </div>
+</body>
+</html> 
