@@ -1,38 +1,52 @@
 const express = require('express');
 const router = express.Router();
-const BitcoinService = require('../services/BitcoinService');
+const bitcoinService = require('../services/BitcoinService');
+const logger = require('../utils/logger');
+const { validate } = require('../utils/middlewares');
+const { validateResponse } = require('../utils/validators');
+const { schemas } = require('../utils/validators');
 
-router.get('/price', async (req, res) => {
+/**
+ * @route GET /api/bitcoin/current
+ * @desc Получает текущую цену биткоина
+ * @access Public
+ * @query {string} currency - Валюта (usd, eur, rub)
+ */
+router.get('/current', validate(schemas.bitcoinPriceRequest), async (req, res, next) => {
   try {
-    const priceData = await BitcoinService.getCurrentPrice();
-    res.json(priceData);
+    const { currency } = req.query;
+    
+    const priceData = bitcoinService.getCurrentPrice(currency);
+    
+    // Валидируем ответ
+    const validatedData = validateResponse(schemas.bitcoinCurrentPriceResponse, priceData);
+    
+    res.json(validatedData);
   } catch (error) {
-    res.status(500).json({ 
-      error: true, 
-      message: 'Ошибка при получении цены биткоина' 
-    });
+    next(error);
   }
 });
 
-router.get('/candles', async (req, res) => {
+/**
+ * @route GET /api/bitcoin/history
+ * @desc Получает историю цен биткоина
+ * @access Public
+ * @query {string} currency - Валюта (usd, eur, rub)
+ * @query {number} days - Количество дней
+ */
+router.get('/history', validate(schemas.bitcoinPriceRequest), async (req, res, next) => {
   try {
-    const timeframe = req.query.timeframe || '1d';
-    const validTimeframes = ['1h', '4h', '1d', '1w'];
+    const { currency, days } = req.query;
     
-    if (!validTimeframes.includes(timeframe)) {
-      return res.status(400).json({ 
-        error: true, 
-        message: 'Неверный временной интервал' 
-      });
-    }
+    const historicalData = bitcoinService.getHistoricalData(currency, days);
     
-    const candleData = await BitcoinService.getCandlestickData(timeframe);
-    res.json(candleData);
-  } catch (error) {
-    res.status(500).json({ 
-      error: true, 
-      message: 'Ошибка при получении данных свечного графика' 
+    res.json({
+      currency,
+      days,
+      data: historicalData
     });
+  } catch (error) {
+    next(error);
   }
 });
 
