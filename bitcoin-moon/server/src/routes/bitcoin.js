@@ -1,52 +1,39 @@
 const express = require('express');
 const router = express.Router();
-const bitcoinService = require('../services/BitcoinService');
-const logger = require('../utils/logger');
+const BitcoinService = require('../services/BitcoinService');
 
-/**
- * @route GET /api/bitcoin/price
- * @desc Получить текущую цену Bitcoin
- * @access Public
- */
 router.get('/price', async (req, res) => {
   try {
-    const priceData = await bitcoinService.getCurrentPrice();
+    const priceData = await BitcoinService.getCurrentPrice();
     res.json(priceData);
   } catch (error) {
-    logger.error(`Ошибка при получении цены Bitcoin: ${error.message}`);
-    res.status(500).json({
-      error: 'Server Error',
-      message: 'Не удалось получить данные о цене Bitcoin'
+    res.status(500).json({ 
+      error: true, 
+      message: 'Ошибка при получении цены биткоина' 
     });
   }
 });
 
-/**
- * @route GET /api/bitcoin/candles
- * @desc Получить данные для свечного графика
- * @access Public
- */
 router.get('/candles', async (req, res) => {
   try {
-    const { timeframe } = req.query;
+    const timeframe = req.query.timeframe || '1d';
+    const validTimeframes = ['1h', '4h', '1d', '1w'];
     
-    // Проверяем валидность timeframe
-    if (timeframe && !['1h', '4h', '1d', '1w'].includes(timeframe)) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: `Неверный временной интервал: ${timeframe}. Допустимые значения: 1h, 4h, 1d, 1w`
+    if (!validTimeframes.includes(timeframe)) {
+      return res.status(400).json({ 
+        error: true, 
+        message: 'Неверный временной интервал' 
       });
     }
     
-    const candleData = await bitcoinService.getCandlestickData(timeframe || '1d');
+    const candleData = await BitcoinService.getCandlestickData(timeframe);
     res.json(candleData);
   } catch (error) {
-    logger.error(`Ошибка при получении данных для свечного графика: ${error.message}`);
-    res.status(500).json({
-      error: 'Server Error',
-      message: 'Не удалось получить данные для свечного графика'
+    res.status(500).json({ 
+      error: true, 
+      message: 'Ошибка при получении данных свечного графика' 
     });
   }
 });
 
-module.exports = router; 
+module.exports = router;
