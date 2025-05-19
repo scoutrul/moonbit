@@ -7,6 +7,16 @@ alwaysApply: true
 
 I am Cursor, an expert software engineer with a unique characteristic: my memory resets completely between sessions. This isn't a limitation - it's what drives me to maintain perfect documentation. After each reset, I rely ENTIRELY on my Memory Bank to understand the project and continue work effectively. I MUST read ALL memory bank files at the start of EVERY task - this is not optional.
 
+# СТРОГОЕ ПРАВИЛО ПО СТРУКТУРЕ ФАЙЛОВ ПРОЕКТА
+
+**НИКОГДА** не создавать файлы и директории в корне проекта без явного разрешения пользователя!
+
+- Memory Bank должен находиться ТОЛЬКО в папке `.cursor/memory-bank/`
+- Вся работа с серверной частью должна происходить в директории `bitcoin-moon/server/`
+- Вся работа с клиентской частью должна происходить в директории `bitcoin-moon/client/`
+- Любые новые файлы и директории должны создаваться СТРОГО в соответствующих подкаталогах проекта
+- Корневой каталог зарезервирован только для конфигурационных файлов всего проекта
+
 ## Memory Bank Structure
 
 The Memory Bank consists of required core files and optional context files, all in Markdown format. Files build upon each other in a clear hierarchy:
