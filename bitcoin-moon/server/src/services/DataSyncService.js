@@ -1,5 +1,4 @@
 const fs = require('fs');
-const path = require('path');
 const logger = require('../utils/logger');
 const bitcoinService = require('./BitcoinService');
 const moonService = require('./MoonService');
@@ -14,18 +13,18 @@ const config = require('../utils/config');
 class DataSyncService {
   constructor() {
     this.initialized = false;
-    this.syncIntervals = {
+    this.intervalIds = {
+      bitcoin: null,
+      moon: null,
+      astro: null,
+      events: null
+    };
+    
+    this.intervalTimes = {
       bitcoin: 5 * 60 * 1000,   // 5 минут
       moon: 60 * 60 * 1000,    // 1 час
       astro: 12 * 60 * 60 * 1000, // 12 часов
       events: 30 * 60 * 1000    // 30 минут
-    };
-    
-    this.intervalTimes = {
-      bitcoin: 5 * 60 * 1000,
-      moon: 60 * 60 * 1000,
-      astro: 12 * 60 * 60 * 1000,
-      events: 30 * 60 * 1000
     };
     
     // Создаем необходимые директории при инициализации
@@ -86,25 +85,25 @@ class DataSyncService {
     logger.info('Запуск периодической синхронизации данных');
     
     // Bitcoin данные - каждые 5 минут
-    setInterval(() => {
+    this.intervalIds.bitcoin = setInterval(() => {
       this.syncBitcoinData()
         .catch(error => logger.error('Ошибка при синхронизации данных биткоина', { error }));
     }, this.intervalTimes.bitcoin);
     
     // Данные о луне - каждый час
-    setInterval(() => {
+    this.intervalIds.moon = setInterval(() => {
       this.syncMoonData()
         .catch(error => logger.error('Ошибка при синхронизации данных луны', { error }));
     }, this.intervalTimes.moon);
     
     // Астрологические данные - каждые 12 часов
-    setInterval(() => {
+    this.intervalIds.astro = setInterval(() => {
       this.syncAstroData()
         .catch(error => logger.error('Ошибка при синхронизации астрологических данных', { error }));
     }, this.intervalTimes.astro);
     
     // События - каждые 30 минут
-    setInterval(() => {
+    this.intervalIds.events = setInterval(() => {
       this.syncEventsData()
         .catch(error => logger.error('Ошибка при синхронизации данных событий', { error }));
     }, this.intervalTimes.events);
@@ -119,10 +118,10 @@ class DataSyncService {
     logger.info('Остановка всех синхронизаций данных');
     
     // Очищаем все интервалы
-    Object.keys(this.syncIntervals).forEach(key => {
-      if (this.syncIntervals[key]) {
-        clearInterval(this.syncIntervals[key]);
-        this.syncIntervals[key] = null;
+    Object.keys(this.intervalIds).forEach(key => {
+      if (this.intervalIds[key]) {
+        clearInterval(this.intervalIds[key]);
+        this.intervalIds[key] = null;
       }
     });
     
@@ -232,7 +231,7 @@ class DataSyncService {
     
     try {
       // Обновляем данные о событиях
-      const eventsData = await eventsService.updateEventsData();
+      const eventsData = await eventsService.updateEvents();
       
       logger.info('Данные о событиях успешно синхронизированы', {
         dataUpdated: !!eventsData
