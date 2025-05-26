@@ -15,20 +15,17 @@ const Dashboard = () => {
       <div className="lg:col-span-4">
         <CurrentPrice />
       </div>
-      
+
       {/* Основная часть с графиком */}
       <div className="lg:col-span-3">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
           <CandlestickChart timeframe={timeframe} />
         </div>
-        
+
         <div className="mt-4 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-          <TimeframeSelector 
-            timeframe={timeframe} 
-            onTimeframeChange={setTimeframe} 
-          />
+          <TimeframeSelector timeframe={timeframe} onTimeframeChange={setTimeframe} />
         </div>
-        
+
         {/* Тестовый компонент с ошибкой */}
         <div className="mt-4">
           <ErrorBoundary>
@@ -36,7 +33,7 @@ const Dashboard = () => {
           </ErrorBoundary>
         </div>
       </div>
-      
+
       {/* Боковая панель с предстоящими событиями */}
       <div className="lg:col-span-1">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">

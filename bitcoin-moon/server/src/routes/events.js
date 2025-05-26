@@ -30,4 +30,4 @@ router.get('/period', eventsController.getEventsByPeriod);
  */
 router.get('/importance/:level', eventsController.getEventsByImportance);
 
-module.exports = router; 
+module.exports = router;

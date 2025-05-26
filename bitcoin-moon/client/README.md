@@ -5,6 +5,7 @@
 Для автоматического тестирования пользовательского интерфейса и сбора ошибок из консоли браузера используется Playwright.
 
 ### Как это работает
+
 - Тесты запускаются с помощью Playwright (`npx playwright test`).
 - В процессе теста автоматически:
   - Логируются все сообщения из консоли браузера
@@ -14,6 +15,7 @@
 - Все артефакты сохраняются в папку `tests/e2e/artifacts`.
 
 ### Пример теста (tests/e2e/console-debug.spec.ts)
+
 ```ts
 import { test, expect } from '@playwright/test';
 import fs from 'fs';
@@ -27,10 +29,10 @@ test('Логируем консоль браузера, ошибки и DOM', as
   const logs: string[] = [];
   const errors: string[] = [];
 
-  page.on('console', msg => {
+  page.on('console', (msg) => {
     logs.push(`[${msg.type()}] ${msg.text()}`);
   });
-  page.on('pageerror', error => {
+  page.on('pageerror', (error) => {
     errors.push(`[pageerror] ${error.message}`);
   });
 
@@ -45,6 +47,7 @@ test('Логируем консоль браузера, ошибки и DOM', as
 ```
 
 ### Конфигурация Playwright (playwright.config.ts)
+
 ```ts
 import { defineConfig } from '@playwright/test';
 
@@ -66,6 +69,7 @@ export default defineConfig({
 ```
 
 ### Как запустить e2e-тесты
+
 1. Установить зависимости:
    ```bash
    npm install
@@ -75,4 +79,4 @@ export default defineConfig({
    ```bash
    npx playwright test
    ```
-3. После выполнения тестов артефакты будут доступны в `tests/e2e/artifacts`. 
+3. После выполнения тестов артефакты будут доступны в `tests/e2e/artifacts`.

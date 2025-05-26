@@ -15,12 +15,12 @@ class BitcoinController {
   async getCurrentPrice(req, res, next) {
     try {
       const { currency } = req.query;
-      
+
       const priceData = bitcoinService.getCurrentPrice(currency);
-      
+
       // Валидируем ответ
       const validatedData = validateResponse(schemas.bitcoinCurrentPriceResponse, priceData);
-      
+
       res.json(validatedData);
     } catch (error) {
       logger.error('Ошибка при получении текущей цены биткоина', { error: error.message });
@@ -37,13 +37,13 @@ class BitcoinController {
   async getHistoricalData(req, res, next) {
     try {
       const { currency, days } = req.query;
-      
+
       const historicalData = bitcoinService.getHistoricalData(currency, days);
-      
+
       res.json({
         currency,
         days,
-        data: historicalData
+        data: historicalData,
       });
     } catch (error) {
       logger.error('Ошибка при получении исторических данных биткоина', { error: error.message });
@@ -53,4 +53,4 @@ class BitcoinController {
 }
 
 // Экспортируем синглтон
-module.exports = new BitcoinController(); 
+module.exports = new BitcoinController();

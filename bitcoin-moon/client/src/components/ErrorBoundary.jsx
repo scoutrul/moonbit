@@ -7,11 +7,11 @@ import { Component } from 'react';
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
-    this.state = { 
+    this.state = {
       hasError: false,
       error: null,
       errorInfo: null,
-      key: 0 // Для пересоздания компонента
+      key: 0, // Для пересоздания компонента
     };
   }
 
@@ -23,16 +23,16 @@ class ErrorBoundary extends Component {
   componentDidCatch(error, errorInfo) {
     // Здесь можно залогировать ошибку
     console.error('Ошибка в компоненте:', error, errorInfo);
-    
+
     // Можно добавить отправку ошибки в сервис мониторинга
     this.logErrorToService(error, errorInfo);
-    
+
     this.setState({
       error,
-      errorInfo
+      errorInfo,
     });
   }
-  
+
   /**
    * Отправляет ошибку в сервис мониторинга
    * @param {Error} error - Объект ошибки
@@ -63,18 +63,18 @@ class ErrorBoundary extends Component {
       console.error('Ошибка при отправке лога ошибки:', e);
     }
   }
-  
+
   /**
    * Сбрасывает состояние ошибки и пересоздает компонент
    */
   resetError = () => {
-    this.setState({ 
-      hasError: false, 
-      error: null, 
+    this.setState({
+      hasError: false,
+      error: null,
       errorInfo: null,
-      key: this.state.key + 1
+      key: this.state.key + 1,
     });
-  }
+  };
 
   render() {
     if (this.state.hasError) {
@@ -83,7 +83,7 @@ class ErrorBoundary extends Component {
         <div className="error-boundary p-4 rounded-lg bg-red-50 dark:bg-red-900 text-red-800 dark:text-red-100 m-4 border border-red-300 dark:border-red-700">
           <h2 className="text-xl font-bold mb-2">Что-то пошло не так</h2>
           <p className="mb-4">Произошла ошибка при отображении этого компонента.</p>
-          
+
           {this.props.fallback ? (
             this.props.fallback
           ) : (
@@ -97,7 +97,7 @@ class ErrorBoundary extends Component {
                   </pre>
                 </details>
               )}
-              
+
               <button
                 className="mt-4 px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 dark:bg-red-600 dark:hover:bg-red-700"
                 onClick={this.resetError}
@@ -115,4 +115,4 @@ class ErrorBoundary extends Component {
   }
 }
 
-export default ErrorBoundary; 
+export default ErrorBoundary;

@@ -7,7 +7,7 @@ import CurrentPrice from '../../src/components/CurrentPrice.jsx';
 // Мокируем axios напрямую в тесте
 jest.mock('axios', () => {
   return {
-    get: jest.fn()
+    get: jest.fn(),
   };
 });
 
@@ -18,7 +18,7 @@ describe('CurrentPrice Component', () => {
 
   it('should show loading state initially', () => {
     render(<CurrentPrice />);
-    
+
     // Проверяем, что компонент находится в состоянии загрузки
     expect(screen.getByTestId('loading-skeleton')).toBeInTheDocument();
   });
@@ -28,18 +28,18 @@ describe('CurrentPrice Component', () => {
     axios.get.mockResolvedValue({
       data: {
         price: 50000,
-        change24h: 2.5
-      }
+        change24h: 2.5,
+      },
     });
 
     render(<CurrentPrice />);
-    
+
     // Ждем загрузки данных
     await waitFor(() => {
       expect(screen.getByText(/50 000,00 \$/)).toBeInTheDocument();
       expect(screen.getByText(/▲ 2.50%/)).toBeInTheDocument();
     });
-    
+
     // Проверяем, что была вызвана правильная конечная точка API
     expect(axios.get).toHaveBeenCalledWith('/api/bitcoin/price');
   });
@@ -49,18 +49,18 @@ describe('CurrentPrice Component', () => {
     axios.get.mockResolvedValue({
       data: {
         price: 48000,
-        change24h: -3.2
-      }
+        change24h: -3.2,
+      },
     });
 
     render(<CurrentPrice />);
-    
+
     // Ждем загрузки данных
     await waitFor(() => {
       expect(screen.getByText(/48 000,00 \$/)).toBeInTheDocument();
       expect(screen.getByText(/▼ 3.20%/)).toBeInTheDocument();
     });
-    
+
     // Проверяем наличие правильного класса для отрицательного изменения
     const changeElement = screen.getByText(/▼ 3.20%/);
     expect(changeElement).toHaveClass('text-red-500');
@@ -71,7 +71,7 @@ describe('CurrentPrice Component', () => {
     axios.get.mockRejectedValue(new Error('Network Error'));
 
     render(<CurrentPrice />);
-    
+
     // Ждем отображения ошибки
     await waitFor(() => {
       expect(screen.getByText('Не удалось загрузить данные о цене')).toBeInTheDocument();
@@ -83,20 +83,20 @@ describe('CurrentPrice Component', () => {
     jest.useFakeTimers();
     const setIntervalSpy = jest.spyOn(global, 'setInterval');
     const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
-    
+
     // Рендерим компонент
     const { unmount } = render(<CurrentPrice />);
-    
+
     // Проверяем, что интервал был установлен
     expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 60000);
-    
+
     // Размонтируем компонент
     unmount();
-    
+
     // Проверяем, что интервал был очищен
     expect(clearIntervalSpy).toHaveBeenCalled();
-    
+
     // Восстанавливаем таймеры
     jest.useRealTimers();
   });
-}); 
+});

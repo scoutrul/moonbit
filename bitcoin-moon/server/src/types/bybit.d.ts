@@ -7,7 +7,7 @@ export interface BybitKlineRequestParams {
   symbol: BybitSupportedSymbol;
   interval: BybitSupportedInterval;
   start?: number; // Timestamp в миллисекундах
-  end?: number;   // Timestamp в миллисекундах
+  end?: number; // Timestamp в миллисекундах
   limit?: number; // Макс. 1000, по умолчанию 200
 }
 
@@ -38,8 +38,8 @@ export interface OHLCVData {
 
 // Типы для WebSocket сообщений от Bybit
 export interface BybitWebSocketKlinePushData {
-  start: number;      // Начало свечи (timestamp ms)
-  end: number;        // Конец свечи (timestamp ms)
+  start: number; // Начало свечи (timestamp ms)
+  end: number; // Конец свечи (timestamp ms)
   interval: BybitSupportedInterval;
   open: string;
   close: string;
@@ -47,8 +47,8 @@ export interface BybitWebSocketKlinePushData {
   low: string;
   volume: string;
   turnover: string;
-  confirm: boolean;   // false - предварительная, true - окончательная
-  timestamp: number;  // Timestamp сообщения
+  confirm: boolean; // false - предварительная, true - окончательная
+  timestamp: number; // Timestamp сообщения
 }
 
 export interface BybitWebSocketUpdateData {
@@ -56,4 +56,4 @@ export interface BybitWebSocketUpdateData {
   type: 'snapshot' | 'delta'; // Тип обновления
   ts: number; // Timestamp сообщения от Bybit (в наносекундах или миллисекундах, уточнить по докам)
   data: BybitWebSocketKlinePushData[];
-} 
+}

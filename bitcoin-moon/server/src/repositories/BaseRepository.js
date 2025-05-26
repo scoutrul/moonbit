@@ -11,13 +11,13 @@ class BaseRepository {
   constructor(cacheFileName) {
     this.cacheDir = config.paths.cache;
     this.cacheFile = path.join(this.cacheDir, cacheFileName);
-    
+
     // Проверяем/создаем директорию для кэша
     if (!fs.existsSync(this.cacheDir)) {
       fs.mkdirSync(this.cacheDir, { recursive: true });
     }
   }
-  
+
   /**
    * Загружает кэш из файла или возвращает значение по умолчанию
    * @param {Object} defaultValue - Значение по умолчанию
@@ -32,10 +32,10 @@ class BaseRepository {
     } catch (error) {
       logger.error(`Ошибка при загрузке кэша из ${this.cacheFile}`, { error });
     }
-    
+
     return defaultValue;
   }
-  
+
   /**
    * Сохраняет данные в кэш
    * @param {Object} data - Данные для сохранения
@@ -47,7 +47,7 @@ class BaseRepository {
       logger.error(`Ошибка при сохранении кэша в ${this.cacheFile}`, { error });
     }
   }
-  
+
   /**
    * Проверяет актуальность кэша
    * @param {Object} cache - Объект кэша с полем last_updated
@@ -58,13 +58,13 @@ class BaseRepository {
     if (!cache || !cache.last_updated) {
       return false;
     }
-    
+
     const cacheDate = new Date(cache.last_updated);
     const now = new Date();
     const diffMinutes = (now - cacheDate) / 1000 / 60;
-    
+
     return diffMinutes < maxAgeMinutes;
   }
 }
 
-module.exports = BaseRepository; 
+module.exports = BaseRepository;

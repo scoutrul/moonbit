@@ -15,9 +15,9 @@ function validate(schema, source = 'query') {
       req[source] = validated;
       next();
     } catch (error) {
-      res.status(error.status || 400).json({ 
+      res.status(error.status || 400).json({
         message: error.message,
-        errors: error.errors
+        errors: error.errors,
       });
     }
   };
@@ -28,14 +28,14 @@ function validate(schema, source = 'query') {
  */
 function requestLogger(req, res, next) {
   const start = Date.now();
-  
+
   res.on('finish', () => {
     const duration = Date.now() - start;
     const { method, originalUrl, ip } = req;
-    
+
     logger.http(req, res, duration);
   });
-  
+
   next();
 }
 
@@ -47,30 +47,30 @@ function errorHandler(err, req, res, next) {
   if (res.headersSent) {
     return next(err);
   }
-  
+
   // Логируем ошибку
-  logger.error('Необработанная ошибка', { 
+  logger.error('Необработанная ошибка', {
     error: err,
-    url: req.originalUrl, 
-    method: req.method
+    url: req.originalUrl,
+    method: req.method,
   });
-  
+
   // Определяем статус и текст ошибки
   const statusCode = err.status || err.statusCode || 500;
   const message = err.message || 'Внутренняя ошибка сервера';
-  
+
   // В production не отправляем стек ошибки
   const response = {
     message,
     status: statusCode,
-    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
+    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack }),
   };
-  
+
   // Добавляем поле errors, если есть
   if (err.errors) {
     response.errors = err.errors;
   }
-  
+
   res.status(statusCode).json(response);
 }
 
@@ -78,14 +78,14 @@ function errorHandler(err, req, res, next) {
  * Middleware для обработки несуществующих маршрутов
  */
 function notFoundHandler(req, res) {
-  logger.warn('Запрос к несуществующему маршруту', { 
-    url: req.originalUrl, 
-    method: req.method 
+  logger.warn('Запрос к несуществующему маршруту', {
+    url: req.originalUrl,
+    method: req.method,
   });
-  
-  res.status(404).json({ 
-    message: 'Маршрут не найден', 
-    status: 404 
+
+  res.status(404).json({
+    message: 'Маршрут не найден',
+    status: 404,
   });
 }
 
@@ -93,5 +93,5 @@ module.exports = {
   validate,
   requestLogger,
   errorHandler,
-  notFoundHandler
-}; 
+  notFoundHandler,
+};

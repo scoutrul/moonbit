@@ -14,13 +14,13 @@ class EventsController {
   async getRecentEvents(req, res, next) {
     try {
       const { limit } = req.query;
-      
+
       const events = eventsService.getRecentEvents(limit);
       res.json(events);
     } catch (error) {
-      logger.error('Ошибка при получении последних событий', { 
+      logger.error('Ошибка при получении последних событий', {
         error: error.message,
-        limit: req.query.limit 
+        limit: req.query.limit,
       });
       next(error);
     }
@@ -35,14 +35,14 @@ class EventsController {
   async getEventsByPeriod(req, res, next) {
     try {
       const { startDate, endDate } = req.query;
-      
+
       const events = eventsService.getEventsByPeriod(startDate, endDate);
       res.json(events);
     } catch (error) {
-      logger.error('Ошибка при получении событий за период', { 
+      logger.error('Ошибка при получении событий за период', {
         error: error.message,
         startDate: req.query.startDate,
-        endDate: req.query.endDate
+        endDate: req.query.endDate,
       });
       next(error);
     }
@@ -58,20 +58,20 @@ class EventsController {
     try {
       const level = parseInt(req.params.level, 10);
       const { limit } = req.query;
-      
+
       if (isNaN(level) || level < 1 || level > 3) {
         return res.status(400).json({
-          message: 'Уровень важности должен быть от 1 до 3'
+          message: 'Уровень важности должен быть от 1 до 3',
         });
       }
-      
+
       const events = eventsService.getEventsByImportance(level, limit);
       res.json(events);
     } catch (error) {
-      logger.error('Ошибка при получении событий по уровню важности', { 
+      logger.error('Ошибка при получении событий по уровню важности', {
         error: error.message,
         level: req.params.level,
-        limit: req.query.limit
+        limit: req.query.limit,
       });
       next(error);
     }
@@ -79,4 +79,4 @@ class EventsController {
 }
 
 // Экспортируем синглтон
-module.exports = new EventsController(); 
+module.exports = new EventsController();

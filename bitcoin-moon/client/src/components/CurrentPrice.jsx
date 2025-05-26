@@ -7,7 +7,7 @@ const CurrentPrice = () => {
     change_24h: null,
     change_percentage_24h: null,
     currency: 'usd',
-    last_updated: null
+    last_updated: null,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -28,44 +28,44 @@ const CurrentPrice = () => {
     };
 
     fetchPrice();
-    
+
     // Обновляем каждую минуту
     const interval = setInterval(fetchPrice, 60000);
-    
+
     return () => clearInterval(interval);
   }, [priceData.currency]);
 
   const formatPrice = (price) => {
     if (price === null) return '--';
-    
+
     return new Intl.NumberFormat('ru-RU', {
       style: 'currency',
       currency: priceData.currency.toUpperCase(),
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      maximumFractionDigits: 2,
     }).format(price);
   };
 
   const formatLastUpdated = (timestamp) => {
     if (!timestamp) return '';
-    
+
     const date = new Date(timestamp);
     return new Intl.DateTimeFormat('ru-RU', {
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit'
+      second: '2-digit',
     }).format(date);
   };
 
   const renderChange = () => {
     const change = priceData.change_percentage_24h;
     if (change === null) return null;
-    
+
     const isPositive = change >= 0;
     const changeValue = Math.abs(change).toFixed(2);
-    
+
     return (
-      <span 
+      <span
         className={`ml-2 ${isPositive ? 'text-green-500' : 'text-red-500'}`}
         title={`Изменение за 24 часа: ${isPositive ? '+' : '-'}${changeValue}%`}
       >
@@ -94,13 +94,14 @@ const CurrentPrice = () => {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
       <div className="flex items-center">
-        <img 
-          src="/bitcoin-icon.svg" 
-          alt="Bitcoin" 
+        <img
+          src="/bitcoin-icon.svg"
+          alt="Bitcoin"
           className="h-10 w-10 mr-3"
           onError={(e) => {
             e.target.onerror = null;
-            e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0iI2Y3OTMxYSI+PHBhdGggZD0iTTE1LjMgMjEuNGMtLjIgMS4yLTEuNyAxLjUtMy4yIDEuMWwuNyAyLjZjMi4xLjUgNC40LS4yIDQuOS0yLjMuNS0yLjEtMS4yLTMuMi0zLjMtMy45bC43LTIuNmMxLjUuNCAzIC43IDMuMi0uNS4yLTEuMi0xLjEtMS44LTIuNi0yLjJsLjctMi42LTEuNy0uNS0uNyAyLjZjLS40LS4xLS45LS4yLTEuMy0uM2wuNy0yLjYtMS43LS41LS43IDIuNmMtLjQtLjEtLjctLjItMS4xLS4zbC45LTMuNC0xLjctLjUtLjcgMi42Yy0yLjEtLjUtNC40LjItNC45IDIuMy0uNSAyLjEgMS4yIDMuMiAzLjMgMy45bC0uNyAyLjZjLTEuNS0uNC0zLS43LTMuMi41LS4yIDEuMiAxLjEgMS44IDIuNiAyLjJsLS43IDIuNiAxLjcuNS43LTIuNmMuNC4xLjkuMiAxLjMuM2wtLjcgMi42IDEuNy41LjctMi42Yy40LjEuNy4yIDEuMS4zbC0uOSAzLjQgMS43LjUuNy0yLjZ6Ii8+PC9zdmc+';
+            e.target.src =
+              'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0iI2Y3OTMxYSI+PHBhdGggZD0iTTE1LjMgMjEuNGMtLjIgMS4yLTEuNyAxLjUtMy4yIDEuMWwuNyAyLjZjMi4xLjUgNC40LS4yIDQuOS0yLjMuNS0yLjEtMS4yLTMuMi0zLjMtMy45bC43LTIuNmMxLjUuNCAzIC43IDMuMi0uNS4yLTEuMi0xLjEtMS44LTIuNi0yLjJsLjctMi42LTEuNy0uNS0uNyAyLjZjLS40LS4xLS45LS4yLTEuMy0uM2wuNy0yLjYtMS43LS41LS43IDIuNmMtLjQtLjEtLjctLjItMS4xLS4zbC45LTMuNC0xLjctLjUtLjcgMi42Yy0yLjEtLjUtNC40LjItNC45IDIuMy0uNSAyLjEgMS4yIDMuMiAzLjMgMy45bC0uNyAyLjZjLTEuNS0uNC0zLS43LTMuMi41LS4yIDEuMiAxLjEgMS44IDIuNiAyLjJsLS43IDIuNiAxLjcuNS43LTIuNmMuNC4xLjkuMiAxLjMuM2wtLjcgMi42IDEuNy41LjctMi42Yy40LjEuNy4yIDEuMS4zbC0uOSAzLjQgMS43LjUuNy0yLjZ6Ii8+PC9zdmc+';
           }}
         />
         <div>
@@ -112,7 +113,10 @@ const CurrentPrice = () => {
             {renderChange()}
           </div>
           {priceData.last_updated && (
-            <div data-testid="last-updated" className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <div
+              data-testid="last-updated"
+              className="text-xs text-gray-500 dark:text-gray-400 mt-1"
+            >
               Обновлено: {formatLastUpdated(priceData.last_updated)}
             </div>
           )}
@@ -122,4 +126,4 @@ const CurrentPrice = () => {
   );
 };
 
-export default CurrentPrice; 
+export default CurrentPrice;

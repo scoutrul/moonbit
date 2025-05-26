@@ -6,65 +6,76 @@ const logger = require('./logger');
  */
 
 // Схема запроса для фаз луны за период
-const moonPeriodRequestSchema = z.object({
-  startDate: z.string()
-    .regex(/^\d{4}-\d{2}-\d{2}/, 'Формат даты должен быть YYYY-MM-DD')
-    .refine(date => !isNaN(new Date(date).getTime()), {
-      message: 'Недопустимая дата начала периода'
-    }),
-  endDate: z.string()
-    .regex(/^\d{4}-\d{2}-\d{2}/, 'Формат даты должен быть YYYY-MM-DD')
-    .refine(date => !isNaN(new Date(date).getTime()), {
-      message: 'Недопустимая дата конца периода'
-    })
-}).refine(data => {
-  const start = new Date(data.startDate);
-  const end = new Date(data.endDate);
-  return start <= end;
-}, {
-  message: 'Дата начала должна быть раньше или равна дате окончания',
-  path: ['startDate']
-});
+const moonPeriodRequestSchema = z
+  .object({
+    startDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}/, 'Формат даты должен быть YYYY-MM-DD')
+      .refine((date) => !isNaN(new Date(date).getTime()), {
+        message: 'Недопустимая дата начала периода',
+      }),
+    endDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}/, 'Формат даты должен быть YYYY-MM-DD')
+      .refine((date) => !isNaN(new Date(date).getTime()), {
+        message: 'Недопустимая дата конца периода',
+      }),
+  })
+  .refine(
+    (data) => {
+      const start = new Date(data.startDate);
+      const end = new Date(data.endDate);
+      return start <= end;
+    },
+    {
+      message: 'Дата начала должна быть раньше или равна дате окончания',
+      path: ['startDate'],
+    }
+  );
 
 // Схема запроса для следующих значимых фаз луны
 const moonNextRequestSchema = z.object({
-  count: z.string()
+  count: z
+    .string()
     .optional()
-    .transform(val => (val ? parseInt(val, 10) : 4))
+    .transform((val) => (val ? parseInt(val, 10) : 4))
     .pipe(
-      z.number()
+      z
+        .number()
         .int('Количество должно быть целым числом')
         .positive('Количество должно быть положительным')
         .max(10, 'Максимальное количество - 10')
-    )
+    ),
 });
 
 // Схема ответа с фазой луны
 const moonPhaseResponseSchema = z.object({
   date: z.string(),
   phase: z.number().min(0).max(1),
-  phaseName: z.string()
+  phaseName: z.string(),
 });
 
 // Схема ответа со значимой фазой луны
 const significantMoonPhaseResponseSchema = z.object({
   date: z.string(),
   type: z.enum(['Новолуние', 'Полнолуние']),
-  phase: z.number().min(0).max(1)
+  phase: z.number().min(0).max(1),
 });
 
 // Схема запроса для цены биткоина
 const bitcoinPriceRequestSchema = z.object({
   currency: z.enum(['usd', 'eur', 'rub']).default('usd'),
-  days: z.string()
+  days: z
+    .string()
     .optional()
-    .transform(val => (val ? parseInt(val, 10) : 30))
+    .transform((val) => (val ? parseInt(val, 10) : 30))
     .pipe(
-      z.number()
+      z
+        .number()
         .int('Количество дней должно быть целым числом')
         .positive('Количество дней должно быть положительным')
         .max(365, 'Максимальное количество дней - 365')
-    )
+    ),
 });
 
 // Схема ответа с текущей ценой биткоина
@@ -73,20 +84,22 @@ const bitcoinCurrentPriceResponseSchema = z.object({
   currency: z.string(),
   last_updated: z.string(),
   change_24h: z.number(),
-  change_percentage_24h: z.number()
+  change_percentage_24h: z.number(),
 });
 
 // Схема запроса для событий
 const eventsRequestSchema = z.object({
-  limit: z.string()
+  limit: z
+    .string()
     .optional()
-    .transform(val => (val ? parseInt(val, 10) : 5))
+    .transform((val) => (val ? parseInt(val, 10) : 5))
     .pipe(
-      z.number()
+      z
+        .number()
         .int('Лимит должен быть целым числом')
         .positive('Лимит должен быть положительным')
         .max(100, 'Максимальное количество событий - 100')
-    )
+    ),
 });
 
 /**
@@ -103,7 +116,7 @@ function validateRequest(schema, data) {
     throw {
       status: 400,
       message: 'Ошибка валидации данных',
-      errors: error.errors
+      errors: error.errors,
     };
   }
 }
@@ -118,11 +131,11 @@ function validateResponse(schema, data) {
   try {
     return schema.parse(data);
   } catch (error) {
-    logger.error('Ошибка валидации ответа', { 
+    logger.error('Ошибка валидации ответа', {
       error: error.errors,
-      data
+      data,
     });
-    
+
     // Не выбрасываем ошибку, только логируем
     return data;
   }
@@ -138,6 +151,6 @@ module.exports = {
     significantMoonPhaseResponse: significantMoonPhaseResponseSchema,
     bitcoinPriceRequest: bitcoinPriceRequestSchema,
     bitcoinCurrentPriceResponse: bitcoinCurrentPriceResponseSchema,
-    eventsRequest: eventsRequestSchema
-  }
-}; 
+    eventsRequest: eventsRequestSchema,
+  },
+};

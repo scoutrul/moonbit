@@ -45,7 +45,7 @@ const CandlestickChart = ({ timeframe }) => {
     if (chartContainerRef.current) {
       const isDarkMode = document.documentElement.classList.contains('dark');
       const theme = isDarkMode ? darkTheme : lightTheme;
-      
+
       const chart = createChart(chartContainerRef.current, {
         width: chartContainerRef.current.clientWidth,
         height: 400,
@@ -58,7 +58,7 @@ const CandlestickChart = ({ timeframe }) => {
           borderColor: isDarkMode ? '#2d3748' : '#f0f0f0',
         },
       });
-      
+
       const candlestickSeries = chart.addCandlestickSeries({
         upColor: '#4caf50',
         downColor: '#ef5350',
@@ -66,10 +66,10 @@ const CandlestickChart = ({ timeframe }) => {
         wickUpColor: '#4caf50',
         wickDownColor: '#ef5350',
       });
-      
+
       chartRef.current = chart;
       candlestickSeriesRef.current = candlestickSeries;
-      
+
       const handleResize = () => {
         if (chartRef.current) {
           chartRef.current.applyOptions({
@@ -77,9 +77,9 @@ const CandlestickChart = ({ timeframe }) => {
           });
         }
       };
-      
+
       window.addEventListener('resize', handleResize);
-      
+
       return () => {
         window.removeEventListener('resize', handleResize);
         if (chartRef.current) {
@@ -90,13 +90,13 @@ const CandlestickChart = ({ timeframe }) => {
       };
     }
   }, []);
-  
+
   // Применяем тему при изменении dark mode
   useEffect(() => {
     if (chartRef.current) {
       const isDarkMode = document.documentElement.classList.contains('dark');
       const theme = isDarkMode ? darkTheme : lightTheme;
-      
+
       chartRef.current.applyOptions({
         layout: theme.layout,
         grid: theme.grid,
@@ -108,20 +108,20 @@ const CandlestickChart = ({ timeframe }) => {
       });
     }
   }, [lightTheme, darkTheme]);
-  
+
   // Загрузка данных при монтировании или изменении timeframe
   useEffect(() => {
     const fetchData = async () => {
       if (!candlestickSeriesRef.current) return;
-      
+
       try {
         setLoading(true);
         setError(null);
-        
+
         const data = await BitcoinService.getCandlestickData(timeframe);
-        
+
         candlestickSeriesRef.current.setData(data);
-        
+
         if (chartRef.current && data.length > 0) {
           chartRef.current.timeScale().fitContent();
         }
@@ -132,12 +132,12 @@ const CandlestickChart = ({ timeframe }) => {
         setLoading(false);
       }
     };
-    
+
     fetchData();
-    
+
     // Настраиваем периодическое обновление данных (раз в минуту)
     const interval = setInterval(fetchData, 60000);
-    
+
     return () => clearInterval(interval);
   }, [timeframe]);
 
@@ -160,4 +160,4 @@ const CandlestickChart = ({ timeframe }) => {
   return <div ref={chartContainerRef} />;
 };
 
-export default CandlestickChart; 
+export default CandlestickChart;

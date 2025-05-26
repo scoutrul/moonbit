@@ -24,51 +24,53 @@ const logger = winston.createLogger({
   defaultMeta: { service: 'moonbit-api' },
   transports: [
     // Логирование в файлы
-    new winston.transports.File({ 
-      filename: path.join(logDir, 'error.log'), 
+    new winston.transports.File({
+      filename: path.join(logDir, 'error.log'),
       level: 'error',
       maxsize: config.logging.fileMaxSize,
-      maxFiles: 5
+      maxFiles: 5,
     }),
-    new winston.transports.File({ 
+    new winston.transports.File({
       filename: path.join(logDir, 'combined.log'),
       maxsize: config.logging.fileMaxSize,
-      maxFiles: 10
-    })
-  ]
+      maxFiles: 10,
+    }),
+  ],
 });
 
 // Если не продакшн, то добавляем консольный транспорт с цветами
 if (config.server.env !== 'production') {
-  logger.add(new winston.transports.Console({
-    format: winston.format.combine(
-      winston.format.colorize(),
-      winston.format.printf(({ level, message, timestamp, ...meta }) => {
-        // Форматирование метаданных для читаемости в консоли
-        let metaStr = '';
-        if (Object.keys(meta).length > 0) {
-          if (meta.error) {
-            // Форматирование ошибок
-            metaStr = meta.error.stack 
-              ? `\n${meta.error.stack}` 
-              : `\n${JSON.stringify(meta.error)}`;
-          } else {
-            // Форматирование остальных метаданных
-            metaStr = `\n${JSON.stringify(meta, null, 2)}`;
+  logger.add(
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.printf(({ level, message, timestamp, ...meta }) => {
+          // Форматирование метаданных для читаемости в консоли
+          let metaStr = '';
+          if (Object.keys(meta).length > 0) {
+            if (meta.error) {
+              // Форматирование ошибок
+              metaStr = meta.error.stack
+                ? `\n${meta.error.stack}`
+                : `\n${JSON.stringify(meta.error)}`;
+            } else {
+              // Форматирование остальных метаданных
+              metaStr = `\n${JSON.stringify(meta, null, 2)}`;
+            }
           }
-        }
-        return `${timestamp} ${level}: ${message}${metaStr}`;
-      })
-    )
-  }));
+          return `${timestamp} ${level}: ${message}${metaStr}`;
+        })
+      ),
+    })
+  );
 }
 
 // Обработчик необработанных исключений
 logger.exceptions.handle(
-  new winston.transports.File({ 
+  new winston.transports.File({
     filename: path.join(logDir, 'exceptions.log'),
     maxsize: config.logging.fileMaxSize,
-    maxFiles: 5 
+    maxFiles: 5,
   })
 );
 
@@ -80,7 +82,7 @@ process.on('unhandledRejection', (reason, promise) => {
 // Функция для логирования HTTP-запросов
 logger.logRequest = (req, res, next) => {
   const start = Date.now();
-  
+
   // Логируем запрос
   logger.debug(`${req.method} ${req.originalUrl}`, {
     method: req.method,
@@ -88,24 +90,24 @@ logger.logRequest = (req, res, next) => {
     ip: req.ip,
     headers: req.headers,
     query: req.query,
-    body: req.body
+    body: req.body,
   });
-  
+
   // После обработки запроса
   res.on('finish', () => {
     const duration = Date.now() - start;
     const level = res.statusCode >= 400 ? 'warn' : 'debug';
-    
+
     logger[level](`${req.method} ${req.originalUrl} ${res.statusCode} - ${duration}ms`, {
       method: req.method,
       url: req.originalUrl,
       status: res.statusCode,
       duration,
-      responseHeaders: res.getHeaders()
+      responseHeaders: res.getHeaders(),
     });
   });
-  
+
   next();
 };
 
-module.exports = logger; 
+module.exports = logger;

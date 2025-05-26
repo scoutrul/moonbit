@@ -14,7 +14,7 @@ class EventsService {
     logger.debug('EventsService: запрос обновления данных о событиях');
     return await eventsRepository.fetchEvents();
   }
-  
+
   /**
    * Получает последние события
    * @param {number} limit - Количество событий для получения
@@ -22,27 +22,27 @@ class EventsService {
    */
   getRecentEvents(limit = 5) {
     const eventsCache = eventsRepository.getEventsCache();
-    
+
     // Если кэш устарел (более 1 часа), запускаем обновление
     const cacheAge = eventsCache.last_updated
       ? (new Date() - new Date(eventsCache.last_updated)) / 1000 / 60
       : 9999;
-      
+
     if (cacheAge > 60) {
       logger.debug(`Кэш событий устарел (${Math.round(cacheAge)} мин), запуск обновления`);
-      this.updateEvents().catch(error => {
+      this.updateEvents().catch((error) => {
         logger.error('Ошибка при фоновом обновлении событий', { error });
       });
     }
-    
+
     // Возвращаем последние события
     const sortedEvents = [...eventsCache.events].sort((a, b) => {
       return new Date(a.date) - new Date(b.date);
     });
-    
+
     return sortedEvents.slice(0, limit);
   }
-  
+
   /**
    * Получает события за указанный период
    * @param {string} startDate - Начальная дата в формате YYYY-MM-DD
@@ -52,20 +52,20 @@ class EventsService {
   getEventsByPeriod(startDate, endDate) {
     const start = new Date(startDate);
     const end = new Date(endDate);
-    
+
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
       throw new Error('Некорректный формат дат');
     }
-    
+
     const eventsCache = eventsRepository.getEventsCache();
-    
+
     // Фильтруем события по дате
-    return eventsCache.events.filter(event => {
+    return eventsCache.events.filter((event) => {
       const eventDate = new Date(event.date);
       return eventDate >= start && eventDate <= end;
     });
   }
-  
+
   /**
    * Получает события по уровню важности
    * @param {number} importance - Уровень важности (1-3)
@@ -74,65 +74,63 @@ class EventsService {
    */
   getEventsByImportance(importance, limit = 10) {
     const eventsCache = eventsRepository.getEventsCache();
-    
+
     // Фильтруем события по важности
-    const filteredEvents = eventsCache.events.filter(event => 
-      event.importance === importance
-    );
-    
+    const filteredEvents = eventsCache.events.filter((event) => event.importance === importance);
+
     // Сортируем по дате
-    const sortedEvents = filteredEvents.sort((a, b) => 
-      new Date(a.date) - new Date(b.date)
-    );
-    
+    const sortedEvents = filteredEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+
     return sortedEvents.slice(0, limit);
   }
-  
+
   /**
    * Анализирует влияние предстоящих событий на рынок биткоина
    * @returns {Object} Результат анализа
    */
   analyzeEventsInfluence() {
     const events = this.getRecentEvents(10);
-    
+
     // Расчет потенциального влияния событий
     let volatilityScore = 0;
     let bullishScore = 0;
     let bearishScore = 0;
-    
-    events.forEach(event => {
+
+    events.forEach((event) => {
       const importance = event.importance || 1;
-      
+
       // Определяем характер события (позитивный/негативный)
       let sentiment = 0;
-      
-      if (event.title.includes('Обновление') || 
-          event.title.includes('Релиз') || 
-          event.title.includes('Интеграция') || 
-          event.title.includes('Листинг')) {
+
+      if (
+        event.title.includes('Обновление') ||
+        event.title.includes('Релиз') ||
+        event.title.includes('Интеграция') ||
+        event.title.includes('Листинг')
+      ) {
         sentiment = 1; // Позитивный
       } else if (event.title.includes('Хардфорк')) {
         sentiment = 0.5; // Нейтральный с позитивным оттенком
       }
-      
+
       // Рассчитываем влияние на тренд и волатильность
       volatilityScore += importance;
-      
+
       if (sentiment > 0) {
         bullishScore += importance * sentiment;
       } else if (sentiment < 0) {
         bearishScore += importance * Math.abs(sentiment);
       }
     });
-    
+
     // Нормализуем оценки
     const totalScore = Math.max(1, events.length);
     volatilityScore = volatilityScore / totalScore;
-    
+
     const trendScore = (bullishScore - bearishScore) / totalScore;
-    
+
     let trend, volatility;
-    
+
     // Определяем тренд
     if (trendScore > 1.5) {
       trend = 'сильный бычий';
@@ -145,7 +143,7 @@ class EventsService {
     } else {
       trend = 'сильный медвежий';
     }
-    
+
     // Определяем волатильность
     if (volatilityScore > 2.5) {
       volatility = 'очень высокая';
@@ -156,15 +154,15 @@ class EventsService {
     } else {
       volatility = 'низкая';
     }
-    
+
     return {
       trend,
       volatility,
       significance: Math.round(Math.abs(trendScore) * 10) / 10,
       events: events.length,
-      highImportanceEvents: events.filter(e => e.importance >= 2).length
+      highImportanceEvents: events.filter((e) => e.importance >= 2).length,
     };
   }
 }
 
-module.exports = new EventsService(); 
+module.exports = new EventsService();

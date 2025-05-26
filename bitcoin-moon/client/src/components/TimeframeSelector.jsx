@@ -4,7 +4,7 @@ const TimeframeSelector = ({ timeframe, onTimeframeChange }) => {
   const timeframes = [
     { id: '1h', label: '1 час' },
     { id: '1d', label: '1 день' },
-    { id: '1w', label: '1 неделя' }
+    { id: '1w', label: '1 неделя' },
   ];
 
   return (
@@ -26,4 +26,4 @@ const TimeframeSelector = ({ timeframe, onTimeframeChange }) => {
   );
 };
 
-export default TimeframeSelector; 
+export default TimeframeSelector;

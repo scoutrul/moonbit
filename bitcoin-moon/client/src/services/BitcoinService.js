@@ -20,7 +20,7 @@ class BitcoinService {
         currency: response.currency,
         last_updated: response.last_updated,
         change_24h: Number(response.change_24h),
-        change_percentage_24h: Number(response.change_percentage_24h)
+        change_percentage_24h: Number(response.change_percentage_24h),
       };
     } catch (error) {
       // DEMO MOCK: возвращаем мок-данные, если нет доступа к API
@@ -31,7 +31,7 @@ class BitcoinService {
         currency,
         last_updated: now.toISOString(),
         change_24h: 1200.45,
-        change_percentage_24h: 1.78
+        change_percentage_24h: 1.78,
       };
     }
   }
@@ -48,10 +48,10 @@ class BitcoinService {
       return {
         currency,
         days,
-        data: response.data.map(point => ({
+        data: response.data.map((point) => ({
           date: point.date,
-          price: Number(point.price)
-        }))
+          price: Number(point.price),
+        })),
       };
     } catch (error) {
       console.error('Ошибка при получении исторических данных биткоина:', error);
@@ -67,13 +67,13 @@ class BitcoinService {
   async getCandlestickData(timeframe = '1d') {
     try {
       const response = await api.get('/bitcoin/candles', { params: { timeframe } });
-      return response.map(candle => ({
+      return response.map((candle) => ({
         time: new Date(candle.time).getTime() / 1000,
         open: Number(candle.open),
         high: Number(candle.high),
         low: Number(candle.low),
         close: Number(candle.close),
-        volume: Number(candle.volume || 0)
+        volume: Number(candle.volume || 0),
       }));
     } catch (error) {
       console.error('Ошибка при получении данных для свечного графика:', error);
@@ -83,4 +83,4 @@ class BitcoinService {
 }
 
 // Экспортируем синглтон
-export default new BitcoinService(); 
+export default new BitcoinService();

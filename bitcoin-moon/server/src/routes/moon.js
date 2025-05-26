@@ -28,4 +28,4 @@ router.get('/period', validate(schemas.moonPeriodRequest), moonController.getPha
  */
 router.get('/next', validate(schemas.moonNextRequest), moonController.getNextSignificantPhases);
 
-module.exports = router; 
+module.exports = router;

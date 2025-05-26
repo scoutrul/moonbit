@@ -33,9 +33,9 @@ class AstroController {
       const retrogradeData = astroService.getRetrogradePlanets(date);
       res.json(retrogradeData);
     } catch (error) {
-      logger.error('Ошибка при получении информации о ретроградных планетах', { 
+      logger.error('Ошибка при получении информации о ретроградных планетах', {
         error: error.message,
-        date: req.query.date 
+        date: req.query.date,
       });
       next(error);
     }
@@ -53,9 +53,9 @@ class AstroController {
       const aspectsData = astroService.getPlanetaryAspects(date);
       res.json(aspectsData);
     } catch (error) {
-      logger.error('Ошибка при получении информации о планетарных аспектах', { 
+      logger.error('Ошибка при получении информации о планетарных аспектах', {
         error: error.message,
-        date: req.query.date 
+        date: req.query.date,
       });
       next(error);
     }
@@ -63,4 +63,4 @@ class AstroController {
 }
 
 // Экспортируем синглтон
-module.exports = new AstroController(); 
+module.exports = new AstroController();

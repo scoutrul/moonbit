@@ -50,4 +50,4 @@ class MoonService {
   }
 }
 
-export default new MoonService(); 
+export default new MoonService();

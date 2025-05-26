@@ -16,4 +16,4 @@ const config = {
   testDir: './tests/e2e',
 };
 
-module.exports = config; 
+module.exports = config;

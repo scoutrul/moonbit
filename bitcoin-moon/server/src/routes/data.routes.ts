@@ -3,11 +3,7 @@ import { query, validationResult } from 'express-validator';
 import WebSocket from 'ws';
 import BybitService from '../services/bybit.service';
 import logger from '../utils/logger';
-import {
-  BybitSupportedSymbol,
-  BybitSupportedInterval,
-  OHLCVData
-} from '../types/bybit';
+import { BybitSupportedSymbol, BybitSupportedInterval, OHLCVData } from '../types/bybit';
 
 const router = express.Router();
 
@@ -15,9 +11,18 @@ const router = express.Router();
 router.get(
   '/bybit/ohlcv',
   [
-    query('symbol').default('BTCUSDT').isIn(['BTCUSDT']).withMessage('Invalid or unsupported symbol'),
-    query('interval').default('60').isIn(['1', '3', '5', '15', '60', '240', 'D', 'W', 'M']).withMessage('Invalid or unsupported interval'),
-    query('limit').default(200).isInt({ min: 1, max: 1000 }).withMessage('Limit must be between 1 and 1000'),
+    query('symbol')
+      .default('BTCUSDT')
+      .isIn(['BTCUSDT'])
+      .withMessage('Invalid or unsupported symbol'),
+    query('interval')
+      .default('60')
+      .isIn(['1', '3', '5', '15', '60', '240', 'D', 'W', 'M'])
+      .withMessage('Invalid or unsupported interval'),
+    query('limit')
+      .default(200)
+      .isInt({ min: 1, max: 1000 })
+      .withMessage('Limit must be between 1 and 1000'),
     // query('from').optional().isNumeric().withMessage('Invalid from timestamp'), // Если нужна поддержка from/to
     // query('to').optional().isNumeric().withMessage('Invalid to timestamp'),
   ],
@@ -57,13 +62,15 @@ export const initializeBybitWebSockets = (server: import('http').Server) => {
     // Ожидаем, что query параметры будут переданы при установлении WebSocket соединения
     // express-ws обычно добавляет req.query, но для ws это может потребовать парсинга url
     const url = new URL(req.url || '', `ws://${req.headers.host}`);
-    const symbol = url.searchParams.get('symbol') as BybitSupportedSymbol | null || 'BTCUSDT';
-    const interval = url.searchParams.get('interval') as BybitSupportedInterval | null || '60';
+    const symbol = (url.searchParams.get('symbol') as BybitSupportedSymbol | null) || 'BTCUSDT';
+    const interval = (url.searchParams.get('interval') as BybitSupportedInterval | null) || '60';
 
     logger.info(`[DataRoutes] WebSocket connection established for ${symbol}-${interval}`);
 
     if (!BybitService.validateSymbolInterval(symbol, interval)) {
-      logger.warn(`[DataRoutes] Invalid WebSocket params: ${symbol}, ${interval}. Closing connection.`);
+      logger.warn(
+        `[DataRoutes] Invalid WebSocket params: ${symbol}, ${interval}. Closing connection.`
+      );
       ws.close(1008, 'Invalid symbol or interval');
       return;
     }
@@ -103,11 +110,11 @@ export const initializeBybitWebSockets = (server: import('http').Server) => {
       });
     } else {
       // Для других запросов на upgrade, можно либо закрыть сокет, либо передать другому обработчику
-       socket.destroy();
+      socket.destroy();
     }
   });
 
   logger.info('[DataRoutes] Bybit WebSocket server initialized and attached to HTTP server.');
 };
 
-export default router; 
+export default router;

@@ -8,7 +8,7 @@ function BuggyCounter() {
   const [counter, setCounter] = useState(0);
 
   const handleClick = () => {
-    setCounter(prev => prev + 1);
+    setCounter((prev) => prev + 1);
   };
 
   if (counter >= 5) {
@@ -19,9 +19,7 @@ function BuggyCounter() {
   return (
     <div className="p-4 border rounded bg-white dark:bg-gray-800 shadow-sm">
       <h3 className="text-lg font-bold mb-2">Тестирование Error Boundary</h3>
-      <p className="mb-4">
-        Этот компонент вызовет ошибку, когда счетчик достигнет 5.
-      </p>
+      <p className="mb-4">Этот компонент вызовет ошибку, когда счетчик достигнет 5.</p>
       <div className="flex items-center gap-4">
         <p className="text-xl font-bold">{counter}</p>
         <button
@@ -35,4 +33,4 @@ function BuggyCounter() {
   );
 }
 
-export default BuggyCounter; 
+export default BuggyCounter;

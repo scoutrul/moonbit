@@ -7,7 +7,7 @@ const fetch = require('node-fetch');
 // Мокируем модуль логирования
 jest.mock('../../src/utils/logger', () => ({
   debug: jest.fn(),
-  error: jest.fn()
+  error: jest.fn(),
 }));
 
 describe('BitcoinService', () => {
@@ -25,15 +25,15 @@ describe('BitcoinService', () => {
       // Установим данные в кэш
       BitcoinService.priceCache = {
         price: 50000,
-        change24h: 2.5
+        change24h: 2.5,
       };
 
       const result = await BitcoinService.getCurrentPrice();
-      
+
       // Проверяем результат
       expect(result).toEqual({
         price: 50000,
-        change24h: 2.5
+        change24h: 2.5,
       });
       expect(mockShouldUpdateCache).toHaveBeenCalledWith('price');
       expect(fetch).not.toHaveBeenCalled();
@@ -52,18 +52,18 @@ describe('BitcoinService', () => {
         json: jest.fn().mockResolvedValue({
           bitcoin: {
             usd: 55000,
-            usd_24h_change: 3.2
-          }
-        })
+            usd_24h_change: 3.2,
+          },
+        }),
       };
       fetch.mockResolvedValue(mockResponse);
 
       const result = await BitcoinService.getCurrentPrice();
-      
+
       // Проверяем результат
       expect(result).toEqual({
         price: 55000,
-        change24h: 3.2
+        change24h: 3.2,
       });
       expect(mockShouldUpdateCache).toHaveBeenCalledWith('price');
       expect(fetch).toHaveBeenCalledWith(
@@ -73,7 +73,7 @@ describe('BitcoinService', () => {
       // Проверяем обновление кэша
       expect(BitcoinService.priceCache).toEqual({
         price: 55000,
-        change24h: 3.2
+        change24h: 3.2,
       });
       expect(BitcoinService.lastUpdate.price).toBeDefined();
 
@@ -107,7 +107,7 @@ describe('BitcoinService', () => {
       // Устанавливаем время последнего обновления на 2 минуты назад
       const twoMinutesAgo = Date.now() - 2 * 60 * 1000;
       BitcoinService.lastUpdate.price = twoMinutesAgo;
-      
+
       expect(BitcoinService.shouldUpdateCache('price')).toBe(true);
     });
 
@@ -115,8 +115,8 @@ describe('BitcoinService', () => {
       // Устанавливаем время последнего обновления на 30 секунд назад
       const thirtySecondsAgo = Date.now() - 30 * 1000;
       BitcoinService.lastUpdate.price = thirtySecondsAgo;
-      
+
       expect(BitcoinService.shouldUpdateCache('price')).toBe(false);
     });
   });
-}); 
+});

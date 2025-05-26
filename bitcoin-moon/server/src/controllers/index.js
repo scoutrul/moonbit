@@ -10,5 +10,5 @@ module.exports = {
   bitcoinController,
   moonController,
   astroController,
-  eventsController
-}; 
+  eventsController,
+};

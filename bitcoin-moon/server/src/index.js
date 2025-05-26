@@ -22,10 +22,12 @@ try {
   const app = express();
 
   // Global middlewares
-  app.use(cors({
-    origin: config.cors.origin,
-    optionsSuccessStatus: 200
-  }));
+  app.use(
+    cors({
+      origin: config.cors.origin,
+      optionsSuccessStatus: 200,
+    })
+  );
   app.use(express.json());
   app.use(requestLogger);
 
@@ -43,7 +45,7 @@ try {
   // Отдача статичных файлов в production
   if (config.server.env === 'production') {
     app.use(express.static(path.join(__dirname, '../../client/dist')));
-    
+
     app.get('*', (req, res) => {
       res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
     });
@@ -64,4 +66,4 @@ try {
 } catch (e) {
   console.error('FATAL ERROR при запуске сервера:', e);
   process.exit(1);
-} 
+}

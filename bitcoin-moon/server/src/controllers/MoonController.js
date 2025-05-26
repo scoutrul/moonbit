@@ -16,10 +16,10 @@ class MoonController {
   async getCurrentPhase(req, res, next) {
     try {
       const phase = moonService.getCurrentPhase();
-      
+
       // Валидируем ответ
       const validatedPhase = validateResponse(schemas.moonPhaseResponse, phase);
-      
+
       res.json(validatedPhase);
     } catch (error) {
       logger.error('Ошибка при получении текущей фазы луны', { error: error.message });
@@ -36,14 +36,14 @@ class MoonController {
   async getPhasesForPeriod(req, res, next) {
     try {
       const { startDate, endDate } = req.query;
-      
+
       const phases = moonService.getPhasesForPeriod(startDate, endDate);
       res.json(phases);
     } catch (error) {
-      logger.error('Ошибка при получении фаз луны за период', { 
+      logger.error('Ошибка при получении фаз луны за период', {
         error: error.message,
         startDate: req.query.startDate,
-        endDate: req.query.endDate 
+        endDate: req.query.endDate,
       });
       next(error);
     }
@@ -59,17 +59,17 @@ class MoonController {
     try {
       const { count } = req.query;
       const phases = moonService.getNextSignificantPhases(count);
-      
+
       // Валидируем каждую фазу в ответе
-      const validatedPhases = phases.map(phase => 
+      const validatedPhases = phases.map((phase) =>
         validateResponse(schemas.significantMoonPhaseResponse, phase)
       );
-      
+
       res.json(validatedPhases);
     } catch (error) {
-      logger.error('Ошибка при получении следующих значимых фаз луны', { 
+      logger.error('Ошибка при получении следующих значимых фаз луны', {
         error: error.message,
-        count: req.query.count 
+        count: req.query.count,
       });
       next(error);
     }
@@ -77,4 +77,4 @@ class MoonController {
 }
 
 // Экспортируем синглтон
-module.exports = new MoonController(); 
+module.exports = new MoonController();

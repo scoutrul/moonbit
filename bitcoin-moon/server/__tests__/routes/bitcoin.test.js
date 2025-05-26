@@ -9,7 +9,7 @@ jest.mock('../../src/services/BitcoinService');
 // Мокируем модуль логирования
 jest.mock('../../src/utils/logger', () => ({
   debug: jest.fn(),
-  error: jest.fn()
+  error: jest.fn(),
 }));
 
 describe('Bitcoin API Routes', () => {
@@ -18,7 +18,7 @@ describe('Bitcoin API Routes', () => {
   beforeEach(() => {
     // Очищаем моки перед каждым тестом
     jest.clearAllMocks();
-    
+
     // Создаем тестовое Express приложение
     app = express();
     app.use(express.json());
@@ -30,17 +30,17 @@ describe('Bitcoin API Routes', () => {
       // Мокируем данные о цене
       bitcoinService.getCurrentPrice.mockResolvedValue({
         price: 60000,
-        change24h: 5.2
+        change24h: 5.2,
       });
 
       // Отправляем запрос на тестовый эндпоинт
       const response = await request(app).get('/api/bitcoin/price');
-      
+
       // Проверяем ответ
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
         price: 60000,
-        change24h: 5.2
+        change24h: 5.2,
       });
       expect(bitcoinService.getCurrentPrice).toHaveBeenCalled();
     });
@@ -52,7 +52,7 @@ describe('Bitcoin API Routes', () => {
 
       // Отправляем запрос на тестовый эндпоинт
       const response = await request(app).get('/api/bitcoin/price');
-      
+
       // Проверяем ответ
       expect(response.status).toBe(500);
       expect(response.body).toHaveProperty('error');
@@ -66,13 +66,13 @@ describe('Bitcoin API Routes', () => {
       // Мокируем данные о свечах
       const mockCandleData = [
         { time: 1617235200, open: 58000, high: 59000, low: 57500, close: 58800 },
-        { time: 1617321600, open: 58800, high: 60000, low: 58500, close: 59500 }
+        { time: 1617321600, open: 58800, high: 60000, low: 58500, close: 59500 },
       ];
       bitcoinService.getCandlestickData.mockResolvedValue(mockCandleData);
 
       // Отправляем запрос на тестовый эндпоинт
       const response = await request(app).get('/api/bitcoin/candles');
-      
+
       // Проверяем ответ
       expect(response.status).toBe(200);
       expect(response.body).toEqual(mockCandleData);
@@ -83,13 +83,13 @@ describe('Bitcoin API Routes', () => {
       // Мокируем данные о свечах
       const mockCandleData = [
         { time: 1617235200, open: 58000, high: 59000, low: 57500, close: 58800 },
-        { time: 1617238800, open: 58800, high: 60000, low: 58500, close: 59500 }
+        { time: 1617238800, open: 58800, high: 60000, low: 58500, close: 59500 },
       ];
       bitcoinService.getCandlestickData.mockResolvedValue(mockCandleData);
 
       // Отправляем запрос на тестовый эндпоинт с параметром
       const response = await request(app).get('/api/bitcoin/candles?timeframe=1h');
-      
+
       // Проверяем ответ
       expect(response.status).toBe(200);
       expect(response.body).toEqual(mockCandleData);
@@ -99,7 +99,7 @@ describe('Bitcoin API Routes', () => {
     it('should return 400 for invalid timeframe', async () => {
       // Отправляем запрос с недопустимым параметром timeframe
       const response = await request(app).get('/api/bitcoin/candles?timeframe=invalid');
-      
+
       // Проверяем ответ
       expect(response.status).toBe(400);
       expect(response.body).toHaveProperty('error');
@@ -114,7 +114,7 @@ describe('Bitcoin API Routes', () => {
 
       // Отправляем запрос на тестовый эндпоинт
       const response = await request(app).get('/api/bitcoin/candles');
-      
+
       // Проверяем ответ
       expect(response.status).toBe(500);
       expect(response.body).toHaveProperty('error');
@@ -122,4 +122,4 @@ describe('Bitcoin API Routes', () => {
       expect(bitcoinService.getCandlestickData).toHaveBeenCalled();
     });
   });
-}); 
+});

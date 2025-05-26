@@ -10,13 +10,16 @@ import {
   BybitKlineResponse,
   BybitRawKline,
   BybitWebSocketUpdateData,
-  BybitWebSocketKlinePushData
+  BybitWebSocketKlinePushData,
 } from '../types/bybit';
 
 class BybitService {
   private restClient: RestClientV5;
   private wsClient: WebsocketClient;
-  private activeSubscriptions: Map<string, { symbol: BybitSupportedSymbol; interval: BybitSupportedInterval }> = new Map();
+  private activeSubscriptions: Map<
+    string,
+    { symbol: BybitSupportedSymbol; interval: BybitSupportedInterval }
+  > = new Map();
   private eventEmitter: EventEmitter = new EventEmitter();
   private readonly KLINE_CATEGORY = 'spot'; // Фокусируемся на споте для BTCUSDT
 
@@ -39,7 +42,7 @@ class BybitService {
 
   private getCacheKey(
     symbol: BybitSupportedSymbol,
-    interval: BybitSupportedInterval,
+    interval: BybitSupportedInterval
     // start?: number, // Ключ кэша теперь только по символу и интервалу для последней выборки
     // end?: number
   ): string {
@@ -47,21 +50,23 @@ class BybitService {
   }
 
   private transformRawKlineData(rawKlines: BybitRawKline[]): OHLCVData[] {
-    return rawKlines.map((kline: BybitRawKline) => ({
-      timestamp: parseInt(kline[0], 10),
-      open: kline[1],
-      high: kline[2],
-      low: kline[3],
-      close: kline[4],
-      volume: kline[5],
-      // turnover: kline[6], // Если нужен оборот
-    })).sort((a, b) => a.timestamp - b.timestamp); // Сортируем на всякий случай
+    return rawKlines
+      .map((kline: BybitRawKline) => ({
+        timestamp: parseInt(kline[0], 10),
+        open: kline[1],
+        high: kline[2],
+        low: kline[3],
+        close: kline[4],
+        volume: kline[5],
+        // turnover: kline[6], // Если нужен оборот
+      }))
+      .sort((a, b) => a.timestamp - b.timestamp); // Сортируем на всякий случай
   }
 
   public async getHistoricalData(
     symbol: BybitSupportedSymbol,
     interval: BybitSupportedInterval,
-    limit: number = 200, // По умолчанию получаем последние 200 свечей
+    limit: number = 200 // По умолчанию получаем последние 200 свечей
     // start?: number, // Убрали start/end для упрощения кэширования последней выборки
     // end?: number
   ): Promise<OHLCVData[]> {
@@ -87,12 +92,18 @@ class BybitService {
       if (response.retCode === 0 && response.result && response.result.list) {
         const ohlcvData = this.transformRawKlineData(response.result.list);
         if (ohlcvData.length > 0) {
-            await redisClient.setex(cacheKey, config.CACHE_TTL.OHLC, JSON.stringify(ohlcvData));
-            logger.debug(`[BybitService] Data cached for ${cacheKey} with TTL ${config.CACHE_TTL.OHLC}s`);
+          await redisClient.setex(cacheKey, config.CACHE_TTL.OHLC, JSON.stringify(ohlcvData));
+          logger.debug(
+            `[BybitService] Data cached for ${cacheKey} with TTL ${config.CACHE_TTL.OHLC}s`
+          );
         }
         return ohlcvData;
       }
-      logger.error('[BybitService] Error fetching historical data:', response.retMsg, response.retExtInfo);
+      logger.error(
+        '[BybitService] Error fetching historical data:',
+        response.retMsg,
+        response.retExtInfo
+      );
       throw new Error(`Failed to fetch historical data from Bybit: ${response.retMsg}`);
     } catch (error: any) {
       logger.error('[BybitService] Exception in getHistoricalData:', error.message || error);
@@ -117,12 +128,16 @@ class BybitService {
     this.wsClient.on('response', (response: any) => {
       logger.debug('[BybitService] WebSocket response:', JSON.stringify(response));
       if (response.op === 'subscribe' && !response.success) {
-        logger.error(`[BybitService] Failed to subscribe to ${response.args?.join(',')}: ${response.ret_msg}`);
+        logger.error(
+          `[BybitService] Failed to subscribe to ${response.args?.join(',')}: ${response.ret_msg}`
+        );
       }
     });
 
     this.wsClient.on('close', (event: { wsKey: string }) => {
-      logger.warn(`[BybitService] WebSocket connection closed: ${event.wsKey}. Will attempt to reconnect.`);
+      logger.warn(
+        `[BybitService] WebSocket connection closed: ${event.wsKey}. Will attempt to reconnect.`
+      );
     });
 
     this.wsClient.on('error', (error: any) => {
@@ -146,7 +161,7 @@ class BybitService {
     const interval = topicParts[1] as BybitSupportedInterval;
     const symbol = topicParts[2] as BybitSupportedSymbol;
 
-    const klinePushData = event.data.find(d => d.confirm); // Берем только подтвержденные свечи
+    const klinePushData = event.data.find((d) => d.confirm); // Берем только подтвержденные свечи
 
     if (klinePushData) {
       const ohlcv: OHLCVData = {
@@ -169,7 +184,10 @@ class BybitService {
         if (cachedValue) {
           const cachedList: OHLCVData[] = JSON.parse(cachedValue);
           // Если последняя свеча такая же по времени, обновляем ее, иначе добавляем новую
-          if (cachedList.length > 0 && cachedList[cachedList.length - 1].timestamp === ohlcv.timestamp) {
+          if (
+            cachedList.length > 0 &&
+            cachedList[cachedList.length - 1].timestamp === ohlcv.timestamp
+          ) {
             updatedData = [...cachedList.slice(0, -1), ohlcv];
           } else {
             updatedData = [...cachedList, ohlcv];
@@ -198,8 +216,8 @@ class BybitService {
     const wsTopic = `kline.${interval}.${symbol}`; // Темы для V5 WS: kline.{interval}.{symbol}
 
     if (!this.wsClient.isWsOpen()) {
-        logger.warn('[BybitService] WebSocket is not open. Attempting to connect and subscribe.');
-        this.wsClient.connectPublic(); // Или connectPrivate, если нужны приватные данные
+      logger.warn('[BybitService] WebSocket is not open. Attempting to connect and subscribe.');
+      this.wsClient.connectPublic(); // Или connectPrivate, если нужны приватные данные
     }
 
     // Проверяем, активна ли подписка, чтобы не дублировать
@@ -225,8 +243,8 @@ class BybitService {
 
   private resubscribeAllActive(): void {
     if (this.activeSubscriptions.size === 0) {
-        logger.info('[BybitService] No active WebSocket subscriptions to restore.');
-        return;
+      logger.info('[BybitService] No active WebSocket subscriptions to restore.');
+      return;
     }
     this.activeSubscriptions.forEach(({ interval, symbol }, topic) => {
       logger.info(`[BybitService] Re-subscribing to WebSocket topic: ${topic}`);
@@ -236,9 +254,19 @@ class BybitService {
 
   public static validateSymbolInterval(symbol: any, interval: any): boolean {
     const validSymbols: BybitSupportedSymbol[] = ['BTCUSDT'];
-    const validIntervals: BybitSupportedInterval[] = ['1', '3', '5', '15', '60', '240', 'D', 'W', 'M'];
+    const validIntervals: BybitSupportedInterval[] = [
+      '1',
+      '3',
+      '5',
+      '15',
+      '60',
+      '240',
+      'D',
+      'W',
+      'M',
+    ];
     return validSymbols.includes(symbol) && validIntervals.includes(interval);
   }
 }
 
-export default new BybitService(); 
+export default new BybitService();

@@ -9,9 +9,10 @@ function App() {
 
   useEffect(() => {
     // Проверяем предпочтение темной темы
-    const isDarkMode = localStorage.getItem('darkMode') === 'true' || 
+    const isDarkMode =
+      localStorage.getItem('darkMode') === 'true' ||
       window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
+
     setDarkMode(isDarkMode);
   }, []);
 
@@ -27,7 +28,7 @@ function App() {
   }, [darkMode]);
 
   const toggleDarkMode = () => {
-    setDarkMode(prevMode => !prevMode);
+    setDarkMode((prevMode) => !prevMode);
   };
 
   return (
@@ -45,4 +46,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;

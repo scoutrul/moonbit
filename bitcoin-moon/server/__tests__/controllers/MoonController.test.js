@@ -18,11 +18,11 @@ describe('MoonController', () => {
 
     // Создаем моки для req, res и next
     req = {
-      query: {}
+      query: {},
     };
     res = {
       json: jest.fn(),
-      status: jest.fn().mockReturnThis()
+      status: jest.fn().mockReturnThis(),
     };
     next = jest.fn();
 
@@ -33,18 +33,18 @@ describe('MoonController', () => {
       illumination: 50,
       date: '2023-06-01T12:00:00Z',
       nextFullMoon: '2023-06-15T12:00:00Z',
-      nextNewMoon: '2023-06-30T12:00:00Z'
+      nextNewMoon: '2023-06-30T12:00:00Z',
     });
 
     moonService.getPhasesForPeriod = jest.fn().mockReturnValue([
       { date: '2023-05-01', phase: 0.0, phaseName: 'Новолуние' },
       { date: '2023-05-08', phase: 0.25, phaseName: 'Первая четверть' },
-      { date: '2023-05-15', phase: 0.5, phaseName: 'Полнолуние' }
+      { date: '2023-05-15', phase: 0.5, phaseName: 'Полнолуние' },
     ]);
 
     moonService.getNextSignificantPhases = jest.fn().mockReturnValue([
       { date: '2023-06-15', phase: 0.5, phaseName: 'Полнолуние' },
-      { date: '2023-06-30', phase: 0.0, phaseName: 'Новолуние' }
+      { date: '2023-06-30', phase: 0.0, phaseName: 'Новолуние' },
     ]);
 
     // Мокаем валидацию
@@ -66,7 +66,7 @@ describe('MoonController', () => {
         illumination: 50,
         date: '2023-06-01T12:00:00Z',
         nextFullMoon: '2023-06-15T12:00:00Z',
-        nextNewMoon: '2023-06-30T12:00:00Z'
+        nextNewMoon: '2023-06-30T12:00:00Z',
       });
 
       // Проверяем, что next не был вызван (нет ошибок)
@@ -107,7 +107,7 @@ describe('MoonController', () => {
       expect(res.json).toHaveBeenCalledWith([
         { date: '2023-05-01', phase: 0.0, phaseName: 'Новолуние' },
         { date: '2023-05-08', phase: 0.25, phaseName: 'Первая четверть' },
-        { date: '2023-05-15', phase: 0.5, phaseName: 'Полнолуние' }
+        { date: '2023-05-15', phase: 0.5, phaseName: 'Полнолуние' },
       ]);
 
       // Проверяем, что next не был вызван (нет ошибок)
@@ -150,7 +150,7 @@ describe('MoonController', () => {
       // Проверяем, что ответ был отправлен с правильными данными
       expect(res.json).toHaveBeenCalledWith([
         { date: '2023-06-15', phase: 0.5, phaseName: 'Полнолуние' },
-        { date: '2023-06-30', phase: 0.0, phaseName: 'Новолуние' }
+        { date: '2023-06-30', phase: 0.0, phaseName: 'Новолуние' },
       ]);
 
       // Проверяем, что next не был вызван (нет ошибок)
@@ -177,4 +177,4 @@ describe('MoonController', () => {
       expect(res.json).not.toHaveBeenCalled();
     });
   });
-}); 
+});

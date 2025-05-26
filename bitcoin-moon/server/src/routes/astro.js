@@ -25,4 +25,4 @@ router.get('/retrograde', astroController.getRetrogradePlanets);
  */
 router.get('/aspects', astroController.getPlanetaryAspects);
 
-module.exports = router; 
+module.exports = router;

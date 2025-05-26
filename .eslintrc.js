@@ -34,26 +34,23 @@ module.exports = {
     'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off',
     'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
     'no-duplicate-imports': 'error',
-    
+
     // Правила для чистых функций
     'no-param-reassign': 'warn',
     'prefer-const': 'error',
-    
+
     // React правила
     'react/prop-types': 'warn',
     'react/jsx-uses-react': 'error',
     'react/jsx-uses-vars': 'error',
     'react-hooks/rules-of-hooks': 'error',
     'react-hooks/exhaustive-deps': 'warn',
-    
+
     // Node.js правила
-    'node/no-unsupported-features/es-syntax': [
-      'error',
-      { ignores: ['modules'] }
-    ],
+    'node/no-unsupported-features/es-syntax': ['error', { ignores: ['modules'] }],
     'node/no-missing-import': 'off',
     'node/no-unpublished-import': 'off',
-    
+
     // Prettier правила
     'prettier/prettier': 'warn',
   },
@@ -68,4 +65,4 @@ module.exports = {
       },
     },
   ],
-}; 
+};

@@ -34,15 +34,7 @@ export default {
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:3000',
 };
 
-export const {
-    PORT,
-    CORS_ORIGIN,
-    LOG_LEVEL,
-    BYBIT,
-    CACHE_TTL,
-    REDIS_URL,
-    CLIENT_URL
-} = {
+export const { PORT, CORS_ORIGIN, LOG_LEVEL, BYBIT, CACHE_TTL, REDIS_URL, CLIENT_URL } = {
   PORT: process.env.PORT || 3001,
   CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:3000',
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
@@ -55,4 +47,4 @@ export const {
   },
   REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:3000',
-}; 
+};

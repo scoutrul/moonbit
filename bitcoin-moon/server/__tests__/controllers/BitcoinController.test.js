@@ -18,11 +18,11 @@ describe('BitcoinController', () => {
 
     // Создаем моки для req, res и next
     req = {
-      query: {}
+      query: {},
     };
     res = {
       json: jest.fn(),
-      status: jest.fn().mockReturnThis()
+      status: jest.fn().mockReturnThis(),
     };
     next = jest.fn();
 
@@ -32,13 +32,13 @@ describe('BitcoinController', () => {
       currency: 'usd',
       last_updated: '2023-06-01T12:00:00Z',
       change_24h: 1000,
-      change_percentage_24h: 2
+      change_percentage_24h: 2,
     });
 
     bitcoinService.getHistoricalData = jest.fn().mockReturnValue([
       { date: '2023-05-01', price: 48000 },
       { date: '2023-05-02', price: 49000 },
-      { date: '2023-05-03', price: 50000 }
+      { date: '2023-05-03', price: 50000 },
     ]);
 
     // Мокаем валидацию
@@ -62,7 +62,7 @@ describe('BitcoinController', () => {
         currency: 'usd',
         last_updated: '2023-06-01T12:00:00Z',
         change_24h: 1000,
-        change_percentage_24h: 2
+        change_percentage_24h: 2,
       });
 
       // Проверяем, что next не был вызван (нет ошибок)
@@ -106,8 +106,8 @@ describe('BitcoinController', () => {
         data: [
           { date: '2023-05-01', price: 48000 },
           { date: '2023-05-02', price: 49000 },
-          { date: '2023-05-03', price: 50000 }
-        ]
+          { date: '2023-05-03', price: 50000 },
+        ],
       });
 
       // Проверяем, что next не был вызван (нет ошибок)
@@ -131,4 +131,4 @@ describe('BitcoinController', () => {
       expect(res.json).not.toHaveBeenCalled();
     });
   });
-}); 
+});
