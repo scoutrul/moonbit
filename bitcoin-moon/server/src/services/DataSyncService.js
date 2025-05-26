@@ -4,7 +4,7 @@ const bitcoinService = require('./BitcoinService');
 const moonService = require('./MoonService');
 const astroService = require('./AstroService');
 const eventsService = require('./EventsService');
-const config = require('../utils/config');
+const config = require('../config');
 
 /**
  * Сервис синхронизации данных
@@ -21,10 +21,10 @@ class DataSyncService {
     };
     
     this.intervalTimes = {
-      bitcoin: 5 * 60 * 1000,   // 5 минут
-      moon: 60 * 60 * 1000,    // 1 час
-      astro: 12 * 60 * 60 * 1000, // 12 часов
-      events: 30 * 60 * 1000    // 30 минут
+      bitcoin: config.sync.bitcoin,   // 5 минут
+      moon: config.sync.moon,         // 1 час
+      astro: config.sync.astro,       // 12 часов
+      events: config.sync.events      // 30 минут
     };
     
     // Создаем необходимые директории при инициализации

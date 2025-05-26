@@ -1,7 +1,7 @@
 const winston = require('winston');
 const path = require('path');
 const fs = require('fs');
-const config = require('./config');
+const config = require('../config');
 
 // Создаем директорию для логов, если она не существует
 const logDir = config.paths.logs;

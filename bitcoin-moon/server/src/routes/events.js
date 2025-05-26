@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const eventsService = require('../services/EventsService');
-const logger = require('../utils/logger');
+const eventsController = require('../controllers/EventsController');
 const { validate } = require('../utils/middlewares');
 const { schemas } = require('../utils/validators');
 
@@ -11,16 +10,7 @@ const { schemas } = require('../utils/validators');
  * @access Public
  * @query {number} limit - Количество событий для получения
  */
-router.get('/recent', validate(schemas.eventsRequest), async (req, res, next) => {
-  try {
-    const { limit } = req.query;
-    
-    const events = eventsService.getRecentEvents(limit);
-    res.json(events);
-  } catch (error) {
-    next(error);
-  }
-});
+router.get('/recent', validate(schemas.eventsRequest), eventsController.getRecentEvents);
 
 /**
  * @route GET /api/events/period
@@ -29,16 +19,7 @@ router.get('/recent', validate(schemas.eventsRequest), async (req, res, next) =>
  * @query {string} startDate - Начальная дата в формате YYYY-MM-DD
  * @query {string} endDate - Конечная дата в формате YYYY-MM-DD
  */
-router.get('/period', async (req, res, next) => {
-  try {
-    const { startDate, endDate } = req.query;
-    
-    const events = eventsService.getEventsByPeriod(startDate, endDate);
-    res.json(events);
-  } catch (error) {
-    next(error);
-  }
-});
+router.get('/period', eventsController.getEventsByPeriod);
 
 /**
  * @route GET /api/events/importance/:level
@@ -47,22 +28,6 @@ router.get('/period', async (req, res, next) => {
  * @param {number} level - Уровень важности (1-3)
  * @query {number} limit - Количество событий для получения
  */
-router.get('/importance/:level', async (req, res, next) => {
-  try {
-    const level = parseInt(req.params.level, 10);
-    const { limit } = req.query;
-    
-    if (isNaN(level) || level < 1 || level > 3) {
-      return res.status(400).json({
-        message: 'Уровень важности должен быть от 1 до 3'
-      });
-    }
-    
-    const events = eventsService.getEventsByImportance(level, limit);
-    res.json(events);
-  } catch (error) {
-    next(error);
-  }
-});
+router.get('/importance/:level', eventsController.getEventsByImportance);
 
 module.exports = router; 

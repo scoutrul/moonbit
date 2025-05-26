@@ -1,9 +1,9 @@
 const axios = require('axios');
 const logger = require('../utils/logger');
-const config = require('../utils/config');
+const config = require('../config');
 const BaseRepository = require('./BaseRepository');
 
-const USE_MOCK = process.env.USE_MOCK_DATA === 'true' || !config.api.coingecko;
+const USE_MOCK = process.env.USE_MOCK_DATA === 'true' || !config.api.coingecko.key;
 
 /**
  * Репозиторий для работы с данными о биткоине
@@ -11,11 +11,11 @@ const USE_MOCK = process.env.USE_MOCK_DATA === 'true' || !config.api.coingecko;
  */
 class BitcoinRepository extends BaseRepository {
   constructor() {
-    super('bitcoin_data.json');
-    this.priceCacheFile = 'bitcoin_price.json';
-    this.historicalCacheFile = 'bitcoin_historical.json';
-    this.apiUrl = 'https://api.coingecko.com/api/v3';
-    this.apiKey = config.api.coingecko;
+    super(config.cache.bitcoin.dataFile);
+    this.priceCacheFile = config.cache.bitcoin.priceFile;
+    this.historicalCacheFile = config.cache.bitcoin.historicalFile;
+    this.apiUrl = config.api.coingecko.baseUrl;
+    this.apiKey = config.api.coingecko.key;
     
     this.priceCache = this.loadPriceCache();
     this.historicalCache = this.loadHistoricalCache();
@@ -26,11 +26,19 @@ class BitcoinRepository extends BaseRepository {
    * @returns {Object} Кэш цен биткоина
    */
   loadPriceCache() {
-    return this.loadCache({
-      usd: { price: 0, last_updated: null, change_24h: 0, change_percentage_24h: 0 },
-      eur: { price: 0, last_updated: null, change_24h: 0, change_percentage_24h: 0 },
-      rub: { price: 0, last_updated: null, change_24h: 0, change_percentage_24h: 0 }
+    const defaultCache = {};
+    
+    // Создаем объект с данными для каждой поддерживаемой валюты
+    config.api.coingecko.params.supportedCurrencies.forEach(currency => {
+      defaultCache[currency] = { 
+        price: 0, 
+        last_updated: null, 
+        change_24h: 0, 
+        change_percentage_24h: 0 
+      };
     });
+    
+    return this.loadCache(defaultCache);
   }
   
   /**
@@ -38,11 +46,17 @@ class BitcoinRepository extends BaseRepository {
    * @returns {Object} Кэш исторических данных
    */
   loadHistoricalCache() {
-    return this.loadCache({
-      usd: { data: [], last_updated: null },
-      eur: { data: [], last_updated: null },
-      rub: { data: [], last_updated: null }
+    const defaultCache = {};
+    
+    // Создаем объект с данными для каждой поддерживаемой валюты
+    config.api.coingecko.params.supportedCurrencies.forEach(currency => {
+      defaultCache[currency] = { 
+        data: [], 
+        last_updated: null 
+      };
     });
+    
+    return this.loadCache(defaultCache);
   }
   
   /**
@@ -51,7 +65,7 @@ class BitcoinRepository extends BaseRepository {
    * @param {number} spread - Разброс цены
    * @returns {number} Случайная цена
    */
-  getRandomPrice(base = 60000, spread = 5000) {
+  getRandomPrice(base = config.mock.bitcoin.basePrice, spread = config.mock.bitcoin.priceSpread) {
     return Math.round((base + (Math.random() - 0.5) * spread) * 100) / 100;
   }
   
@@ -63,11 +77,11 @@ class BitcoinRepository extends BaseRepository {
   getMockHistory(days = 30) {
     const now = new Date();
     const data = [];
-    let price = 60000;
+    let price = config.mock.bitcoin.basePrice;
     for (let i = days - 1; i >= 0; i--) {
       const date = new Date(now);
       date.setDate(now.getDate() - i);
-      price += (Math.random() - 0.5) * 1000;
+      price += (Math.random() - 0.5) * config.mock.bitcoin.dailyFluctuation;
       data.push({ date: date.toISOString().split('T')[0], price: Math.round(price * 100) / 100 });
     }
     return data;
@@ -96,7 +110,7 @@ class BitcoinRepository extends BaseRepository {
       
       const params = {
         ids: 'bitcoin',
-        vs_currencies: 'usd,eur,rub',
+        vs_currencies: config.api.coingecko.params.supportedCurrencies.join(','),
         include_24hr_change: true,
         include_last_updated_at: true
       };
@@ -106,13 +120,14 @@ class BitcoinRepository extends BaseRepository {
         params.x_cg_pro_api_key = this.apiKey;
       }
       
-      const response = await axios.get(`${this.apiUrl}/simple/price`, { params });
+      const endpoint = config.api.coingecko.endpoints.price;
+      const response = await axios.get(`${this.apiUrl}${endpoint}`, { params });
       
       if (response.data && response.data.bitcoin) {
         const btcData = response.data.bitcoin;
         
         // Обновляем данные по каждой валюте
-        for (const currency of ['usd', 'eur', 'rub']) {
+        for (const currency of config.api.coingecko.params.supportedCurrencies) {
           if (btcData[currency]) {
             this.priceCache[currency] = {
               price: btcData[currency],
@@ -159,7 +174,7 @@ class BitcoinRepository extends BaseRepository {
       logger.debug(`Запрос исторических данных биткоина за ${days} дней из CoinGecko API`);
       
       const params = {
-        vs_currency: 'usd', // Основная валюта
+        vs_currency: config.api.coingecko.params.defaultCurrency,
         days: days,
         interval: 'daily'
       };
@@ -169,7 +184,8 @@ class BitcoinRepository extends BaseRepository {
         params.x_cg_pro_api_key = this.apiKey;
       }
       
-      const response = await axios.get(`${this.apiUrl}/coins/bitcoin/market_chart`, { params });
+      const endpoint = config.api.coingecko.endpoints.marketChart;
+      const response = await axios.get(`${this.apiUrl}${endpoint}`, { params });
       
       if (response.data && response.data.prices) {
         // Обработка и форматирование данных для USD

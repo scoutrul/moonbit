@@ -8,7 +8,7 @@ try {
   console.log('4. Импорт logger');
   const logger = require('./utils/logger');
   console.log('5. Импорт config');
-  const config = require('./utils/config');
+  const config = require('./config');
   console.log('6. Импорт middlewares');
   const { requestLogger, errorHandler, notFoundHandler } = require('./utils/middlewares');
   console.log('7. Импорт роутов');

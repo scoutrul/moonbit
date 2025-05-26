@@ -1,5 +1,6 @@
 const logger = require('../utils/logger');
 const bitcoinRepository = require('../repositories/BitcoinRepository');
+const config = require('../config');
 
 /**
  * Сервис для работы с данными о биткоине
@@ -30,20 +31,20 @@ class BitcoinService {
    * @param {string} currency - Валюта (usd, eur, rub)
    * @returns {Object} Данные о текущей цене биткоина
    */
-  getCurrentPrice(currency = 'usd') {
-    if (!['usd', 'eur', 'rub'].includes(currency)) {
-      currency = 'usd';
+  getCurrentPrice(currency = config.api.coingecko.params.defaultCurrency) {
+    if (!config.api.coingecko.params.supportedCurrencies.includes(currency)) {
+      currency = config.api.coingecko.params.defaultCurrency;
     }
     
     const priceCache = bitcoinRepository.getPriceCache();
     const cacheData = priceCache[currency];
     
-    // Если данные устарели (более 15 минут), запускаем обновление
+    // Если данные устарели, запускаем обновление
     const cacheAge = cacheData.last_updated
       ? (new Date() - new Date(cacheData.last_updated)) / 1000 / 60
       : 9999;
       
-    if (cacheAge > 15) {
+    if (cacheAge > config.cache.bitcoin.priceTtl) {
       logger.debug(`Кэш цены биткоина устарел (${Math.round(cacheAge)} мин), запуск обновления`);
       this.updatePriceData().catch(error => {
         logger.error('Ошибка при фоновом обновлении цены биткоина', { error });
@@ -65,9 +66,9 @@ class BitcoinService {
    * @param {number} days - Количество дней для отображения
    * @returns {Array} Исторические данные о цене биткоина
    */
-  getHistoricalData(currency = 'usd', days = 30) {
-    if (!['usd', 'eur', 'rub'].includes(currency)) {
-      currency = 'usd';
+  getHistoricalData(currency = config.api.coingecko.params.defaultCurrency, days = 30) {
+    if (!config.api.coingecko.params.supportedCurrencies.includes(currency)) {
+      currency = config.api.coingecko.params.defaultCurrency;
     }
     
     const historicalCache = bitcoinRepository.getHistoricalCache();
@@ -79,7 +80,7 @@ class BitcoinService {
       : 9999;
     const hasEnoughData = cacheData.data.length >= days;
       
-    if (cacheAge > 12 || !hasEnoughData) {
+    if (cacheAge > config.cache.bitcoin.historyTtl || !hasEnoughData) {
       logger.debug(`Кэш исторических данных биткоина устарел (${Math.round(cacheAge)} ч) или недостаточен, запуск обновления`);
       this.updateHistoricalData(Math.max(365, days)).catch(error => {
         logger.error('Ошибка при фоновом обновлении исторических данных биткоина', { error });
@@ -101,7 +102,7 @@ class BitcoinService {
    * @param {number} days - Количество дней для анализа
    * @returns {Object} Результат анализа тренда
    */
-  analyzePriceTrend(currency = 'usd', days = 30) {
+  analyzePriceTrend(currency = config.api.coingecko.params.defaultCurrency, days = 30) {
     const data = this.getHistoricalData(currency, days);
     
     if (data.length < 2) {
@@ -143,7 +144,7 @@ class BitcoinService {
    * @param {number} days - Количество дней для анализа
    * @returns {Object} Результат анализа волатильности
    */
-  analyzeVolatility(currency = 'usd', days = 30) {
+  analyzeVolatility(currency = config.api.coingecko.params.defaultCurrency, days = 30) {
     const data = this.getHistoricalData(currency, days);
     
     if (data.length < 3) {
