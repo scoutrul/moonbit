@@ -180,25 +180,74 @@ When asked to enter "Planner Mode" or using the /plan command, deeply reflect up
 
 # Правила работы с проектом MoonBit
 
+## Соглашения по именованию файлов
+
+В проекте MoonBit используются следующие соглашения по именованию файлов:
+
+- **PascalCase** для компонентов React, классов и сервисов (AstroService.js, BitcoinPrice.jsx)
+- **camelCase** для утилит, хуков и функций (astroEvents.js, useLocalStorage.js)
+- **kebab-case** для CSS-файлов и статических ресурсов (moon-phase.css, full-moon-icon.svg)
+
+Это соответствует стандартам React и JavaScript, где классы и компоненты именуются в PascalCase, а функции и переменные - в camelCase.
+
+## Структура проекта
+
+- Серверная часть находится в `bitcoin-moon/server/`
+- Клиентская часть находится в `bitcoin-moon/client/`
+- Memory Bank располагается в `.cursor/memory-bank/`
+- Правила проекта хранятся в `.cursor/rules/`
+
+## Мониторинг логов
+
+При работе с проектом необходимо постоянно мониторить логи:
+
+```bash
+# Просмотр логов сервера
+docker logs moonbit-server
+
+# Просмотр логов клиента
+docker logs moonbit-client
+
+# Просмотр логов в реальном времени
+docker logs -f moonbit-server
+```
+
+## Особенности архитектуры
+
+1. **Сервисы**: Используются для инкапсуляции бизнес-логики, именуются в PascalCase
+   - `AstroService.js` - работа с астрономическими данными
+   - `BitcoinService.js` - работа с данными о биткоине
+
+2. **Утилиты**: Экспортируют функции, именуются в camelCase
+   - `astroEvents.js` - функции для работы с астрономическими событиями
+   - `dateFormatters.js` - функции для форматирования дат
+
+3. **Компоненты**: Реакт-компоненты, именуются в PascalCase
+   - `BitcoinPrice.jsx` - компонент отображения цены биткоина
+   - `MoonPhaseWidget.jsx` - компонент отображения фаз луны
+
+## Работа с Docker
+
+При запуске проекта в Docker необходимо убедиться в правильной установке всех зависимостей:
+
+1. Проверить наличие пакета `astronomia` в `package.json` клиента
+2. Убедиться в корректном копировании файлов в образ
+3. Проверить наличие всех необходимых переменных окружения
+
+## Особенности работы с модулями
+
+В проекте используются ES модули (не CommonJS):
+
+- Импорты должны содержать расширение файла: `import AstroService from './AstroService.js'`
+- Экспорты должны использовать ES синтаксис: `export default` или `export const`
+- В package.json должно быть указано `"type": "module"`
+
 ## Именование
 
 - Используйте camelCase для именования переменных и функций в JavaScript
 - Используйте PascalCase для именования компонентов React
 - Используйте kebab-case для именования CSS классов и файлов стилей
 - Используйте UPPER_CASE для констант
-
-## Структура проекта
-
-- Клиентская часть находится в директории `bitcoin-moon/client`
-- Серверная часть находится в директории `bitcoin-moon/server`
-- Компоненты React хранятся в `client/src/components`
-- Хуки React хранятся в `client/src/hooks`
-- Сервисы для работы с API хранятся в `client/src/services`
-- Утилиты находятся в `client/src/utils`
-- Серверные контроллеры находятся в `server/src/controllers`
-- Серверные модели находятся в `server/src/models`
-- Серверные маршруты находятся в `server/src/routes`
-- Серверные сервисы находятся в `server/src/services`
 
 ## Соглашения по коду
 
