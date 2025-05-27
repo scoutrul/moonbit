@@ -3,8 +3,7 @@ import CandlestickChart from './CandlestickChart';
 import CurrentPrice from './CurrentPrice';
 import TimeframeSelector from './TimeframeSelector';
 import UpcomingEvents from './UpcomingEvents';
-import BuggyCounter from './BuggyCounter';
-import ErrorBoundary from './ErrorBoundary';
+import ErrorWrapper from './ErrorWrapper';
 
 const Dashboard = () => {
   const [timeframe, setTimeframe] = useState('1d'); // 1h, 1d, 1w
@@ -13,31 +12,32 @@ const Dashboard = () => {
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
       {/* Верхняя панель с текущей ценой */}
       <div className="lg:col-span-4">
-        <CurrentPrice />
+        <ErrorWrapper fallbackText="Не удалось загрузить информацию о текущей цене">
+          <CurrentPrice />
+        </ErrorWrapper>
       </div>
 
       {/* Основная часть с графиком */}
       <div className="lg:col-span-3">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-          <CandlestickChart timeframe={timeframe} />
+          <ErrorWrapper fallbackText="Не удалось загрузить график цены биткоина">
+            <CandlestickChart timeframe={timeframe} />
+          </ErrorWrapper>
         </div>
 
         <div className="mt-4 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-          <TimeframeSelector timeframe={timeframe} onTimeframeChange={setTimeframe} />
-        </div>
-
-        {/* Тестовый компонент с ошибкой */}
-        <div className="mt-4">
-          <ErrorBoundary>
-            <BuggyCounter />
-          </ErrorBoundary>
+          <ErrorWrapper fallbackText="Не удалось загрузить селектор таймфрейма">
+            <TimeframeSelector timeframe={timeframe} onTimeframeChange={setTimeframe} />
+          </ErrorWrapper>
         </div>
       </div>
 
       {/* Боковая панель с предстоящими событиями */}
       <div className="lg:col-span-1">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-          <UpcomingEvents />
+          <ErrorWrapper fallbackText="Не удалось загрузить информацию о предстоящих событиях">
+            <UpcomingEvents />
+          </ErrorWrapper>
         </div>
       </div>
     </div>
