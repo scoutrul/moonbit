@@ -2,6 +2,10 @@
  * Сервис для работы с данными о биткоине
  */
 import api from './api';
+import { generateCandlestickData, generateCurrentPrice, generateHistoricalData } from '../utils/mockDataGenerator';
+
+// Флаг для демо-режима
+const DEMO_MODE = true; // Всегда используем моковые данные
 
 /**
  * Класс для работы с данными о биткоине
@@ -13,6 +17,12 @@ class BitcoinService {
    * @returns {Promise<Object>} Объект с текущей ценой и изменениями
    */
   async getCurrentPrice(currency = 'usd') {
+    // В демо-режиме сразу возвращаем моковые данные
+    if (DEMO_MODE) {
+      console.warn('DEMO MODE: возвращаем мок-данные для getCurrentPrice');
+      return generateCurrentPrice(currency);
+    }
+    
     try {
       const response = await api.get('/bitcoin/current', { params: { currency } });
       return {
@@ -23,16 +33,9 @@ class BitcoinService {
         change_percentage_24h: Number(response.change_percentage_24h),
       };
     } catch (error) {
-      // DEMO MOCK: возвращаем мок-данные, если нет доступа к API
+      // Если ошибка, всё равно возвращаем мок-данные
       console.warn('DEMO MODE: возвращаем мок-данные для getCurrentPrice');
-      const now = new Date();
-      return {
-        price: 68750.23,
-        currency,
-        last_updated: now.toISOString(),
-        change_24h: 1200.45,
-        change_percentage_24h: 1.78,
-      };
+      return generateCurrentPrice(currency);
     }
   }
 
@@ -43,6 +46,12 @@ class BitcoinService {
    * @returns {Promise<Object>} Объект с историческими данными
    */
   async getHistoricalData(currency = 'usd', days = 30) {
+    // В демо-режиме сразу возвращаем моковые данные
+    if (DEMO_MODE) {
+      console.warn('DEMO MODE: возвращаем мок-данные для getHistoricalData');
+      return generateHistoricalData(currency, days);
+    }
+    
     try {
       const response = await api.get('/bitcoin/history', { params: { currency, days } });
       return {
@@ -54,8 +63,8 @@ class BitcoinService {
         })),
       };
     } catch (error) {
-      console.error('Ошибка при получении исторических данных биткоина:', error);
-      throw error;
+      console.warn('DEMO MODE: возвращаем мок-данные для getHistoricalData');
+      return generateHistoricalData(currency, days);
     }
   }
 
@@ -65,6 +74,12 @@ class BitcoinService {
    * @returns {Promise<Array>} Массив с данными для свечного графика
    */
   async getCandlestickData(timeframe = '1d') {
+    // В демо-режиме сразу возвращаем моковые данные
+    if (DEMO_MODE) {
+      console.warn('DEMO MODE: возвращаем мок-данные для getCandlestickData');
+      return generateCandlestickData(timeframe);
+    }
+    
     try {
       const response = await api.get('/bitcoin/candles', { params: { timeframe } });
       return response.map((candle) => ({
@@ -76,8 +91,8 @@ class BitcoinService {
         volume: Number(candle.volume || 0),
       }));
     } catch (error) {
-      console.error('Ошибка при получении данных для свечного графика:', error);
-      throw error;
+      console.warn('DEMO MODE: возвращаем мок-данные для getCandlestickData');
+      return generateCandlestickData(timeframe);
     }
   }
 }

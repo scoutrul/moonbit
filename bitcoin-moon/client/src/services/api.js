@@ -1,85 +1,49 @@
 /**
- * Базовый сервис для работы с API
- * Содержит общие методы для выполнения запросов
+ * Модуль для работы с API
  */
+import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+// Создаем экземпляр axios с базовыми настройками
+const api = axios.create({
+  baseURL: '/api',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-/**
- * Класс для работы с API
- */
-class ApiService {
-  /**
-   * Выполняет GET запрос к API
-   * @param {string} endpoint - Конечная точка API
-   * @param {Object} options - Опции запроса
-   * @param {Object} options.params - Параметры запроса
-   * @returns {Promise<any>} Результат запроса
-   */
-  async get(endpoint, options = {}) {
-    const url = new URL(`${API_BASE_URL}${endpoint}`);
-
-    // Добавляем параметры запроса в URL
-    if (options.params) {
-      Object.entries(options.params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          url.searchParams.append(key, value);
-        }
-      });
-    }
-
-    try {
-      const response = await fetch(url.toString(), {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        credentials: 'same-origin',
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({
-          message: response.statusText,
-        }));
-        throw new Error(error.message || `HTTP error ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error(`Ошибка при запросе к ${endpoint}:`, error);
-      throw error;
-    }
+// Добавляем перехватчик для запросов
+api.interceptors.request.use(
+  (config) => {
+    // Здесь можно добавить авторизационные заголовки и т.д.
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
+);
 
-  /**
-   * Выполняет POST запрос к API
-   * @param {string} endpoint - Конечная точка API
-   * @param {Object} data - Данные для отправки
-   * @returns {Promise<any>} Результат запроса
-   */
-  async post(endpoint, data = {}) {
-    try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error(`Ошибка при запросе к ${endpoint}:`, error);
-      throw error;
+// Добавляем перехватчик для ответов
+api.interceptors.response.use(
+  (response) => {
+    // Обрабатываем успешный ответ
+    return response;
+  },
+  (error) => {
+    // Обрабатываем ошибки ответа
+    if (error.response) {
+      // Серверная ошибка с ответом
+      console.error('API error:', error.response.status, error.response.data);
+    } else if (error.request) {
+      // Ошибка запроса (нет ответа)
+      console.error('API request error:', error.request);
+    } else {
+      // Ошибка при настройке запроса
+      console.error('API setup error:', error.message);
     }
+    
+    return Promise.reject(error);
   }
-}
+);
 
-// Экспортируем синглтон
-export default new ApiService();
+export default api;
