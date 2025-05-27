@@ -1,6 +1,6 @@
 import { RestClientV5, WebsocketClient, WSChangeEvent } from 'bybit-api';
 import EventEmitter from 'events';
-import config from '../config';
+import config from '../config/index.js';
 import redisClient from '../data/cache/redis';
 import logger from '../utils/logger';
 import {
