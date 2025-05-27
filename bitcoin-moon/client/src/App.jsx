@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -33,15 +34,21 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-        <Header darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
-        <main className="container mx-auto px-4 py-8">
-          <ErrorBoundary>
-            <Dashboard />
-          </ErrorBoundary>
-        </main>
-        <DevPanel />
-      </div>
+      <Router>
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+          <Header darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
+          
+          <main className="container mx-auto px-4 py-8">
+            <ErrorBoundary>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+              </Routes>
+            </ErrorBoundary>
+          </main>
+          
+          <DevPanel />
+        </div>
+      </Router>
     </ErrorBoundary>
   );
 }
