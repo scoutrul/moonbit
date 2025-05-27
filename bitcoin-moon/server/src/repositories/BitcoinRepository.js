@@ -1,7 +1,7 @@
-const axios = require('axios');
-const logger = require('../utils/logger');
-const config = require('../config');
-const BaseRepository = require('./BaseRepository');
+import axios from 'axios';
+import logger from '../utils/logger.js';
+import config from '../config/index.js';
+import BaseRepository from './BaseRepository.js';
 
 const USE_MOCK = process.env.USE_MOCK_DATA === 'true' || !config.api.coingecko.key;
 
@@ -232,4 +232,5 @@ class BitcoinRepository extends BaseRepository {
   }
 }
 
-module.exports = new BitcoinRepository();
+const bitcoinRepository = new BitcoinRepository();
+export default bitcoinRepository;

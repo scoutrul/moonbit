@@ -1,6 +1,6 @@
-const logger = require('../utils/logger');
-const bitcoinRepository = require('../repositories/BitcoinRepository');
-const config = require('../config');
+import logger from '../utils/logger.js';
+import bitcoinRepository from '../repositories/BitcoinRepository.js';
+import config from '../config/index.js';
 
 /**
  * Сервис для работы с данными о биткоине
@@ -196,4 +196,5 @@ class BitcoinService {
   }
 }
 
-module.exports = new BitcoinService();
+const bitcoinService = new BitcoinService();
+export default bitcoinService;

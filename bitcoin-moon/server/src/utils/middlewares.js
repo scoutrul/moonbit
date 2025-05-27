@@ -1,5 +1,5 @@
-const logger = require('./logger');
-const { validateRequest } = require('./validators');
+import logger from './logger.js';
+import { validateRequest } from './validators.js';
 
 /**
  * Middleware для валидации запроса
@@ -89,7 +89,7 @@ function notFoundHandler(req, res) {
   });
 }
 
-module.exports = {
+export {
   validate,
   requestLogger,
   errorHandler,

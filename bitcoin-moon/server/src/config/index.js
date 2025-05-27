@@ -1,6 +1,11 @@
-const dotenv = require('dotenv');
-const path = require('path');
-const fs = require('fs');
+import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+// Получение пути текущего файла в ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Загружаем переменные окружения
 dotenv.config();
@@ -140,4 +145,4 @@ const config = {
   },
 };
 
-module.exports = config;
+export default config;

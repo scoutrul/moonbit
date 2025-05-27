@@ -1,8 +1,9 @@
-const express = require('express');
+import express from 'express';
+import bitcoinController from '../controllers/BitcoinController.js';
+import { validate } from '../utils/middlewares.js';
+import { schemas } from '../utils/validators.js';
+
 const router = express.Router();
-const bitcoinController = require('../controllers/BitcoinController');
-const { validate } = require('../utils/middlewares');
-const { schemas } = require('../utils/validators');
 
 /**
  * @route GET /api/bitcoin/current
@@ -13,12 +14,30 @@ const { schemas } = require('../utils/validators');
 router.get('/current', validate(schemas.bitcoinPriceRequest), bitcoinController.getCurrentPrice);
 
 /**
- * @route GET /api/bitcoin/history
- * @desc Получает историю цен биткоина
+ * @route GET /api/bitcoin/historical
+ * @desc Получает исторические данные о цене биткоина
  * @access Public
  * @query {string} currency - Валюта (usd, eur, rub)
- * @query {number} days - Количество дней
+ * @query {number} days - Количество дней для отображения (макс. 365)
  */
-router.get('/history', validate(schemas.bitcoinPriceRequest), bitcoinController.getHistoricalData);
+router.get('/historical', validate(schemas.bitcoinPriceRequest), bitcoinController.getHistoricalData);
 
-module.exports = router;
+/**
+ * @route GET /api/bitcoin/trend
+ * @desc Получает анализ тренда цены биткоина
+ * @access Public
+ * @query {string} currency - Валюта (usd, eur, rub)
+ * @query {number} days - Количество дней для анализа
+ */
+router.get('/trend', validate(schemas.bitcoinPriceRequest), bitcoinController.getPriceTrend);
+
+/**
+ * @route GET /api/bitcoin/volatility
+ * @desc Получает анализ волатильности цены биткоина
+ * @access Public
+ * @query {string} currency - Валюта (usd, eur, rub)
+ * @query {number} days - Количество дней для анализа
+ */
+router.get('/volatility', validate(schemas.bitcoinPriceRequest), bitcoinController.getVolatility);
+
+export default router;

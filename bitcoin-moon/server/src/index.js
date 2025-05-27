@@ -1,24 +1,23 @@
+import express from 'express';
+import cors from 'cors';
+import path from 'path';
+import logger from './utils/logger.js';
+import config from './config/index.js';
+import { requestLogger, errorHandler, notFoundHandler } from './utils/middlewares.js';
+import bitcoinRoutes from './routes/bitcoin.js';
+import moonRoutes from './routes/moon.js';
+import astroRoutes from './routes/astro.js';
+import eventsRoutes from './routes/events.js';
+import { dataSyncService } from './services/DataSyncService.js';
+import { fileURLToPath } from 'url';
+
+// Получение пути текущего файла в ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 try {
-  console.log('1. Импорт express');
-  const express = require('express');
-  console.log('2. Импорт cors');
-  const cors = require('cors');
-  console.log('3. Импорт path');
-  const path = require('path');
-  console.log('4. Импорт logger');
-  const logger = require('./utils/logger');
-  console.log('5. Импорт config');
-  const config = require('./config');
-  console.log('6. Импорт middlewares');
-  const { requestLogger, errorHandler, notFoundHandler } = require('./utils/middlewares');
-  console.log('7. Импорт роутов');
-  const bitcoinRoutes = require('./routes/bitcoin');
-  const moonRoutes = require('./routes/moon');
-  const astroRoutes = require('./routes/astro');
-  const eventsRoutes = require('./routes/events');
-  console.log('8. Импорт DataSyncService');
-  const DataSyncService = require('./services/DataSyncService');
-  console.log('9. Создание express app');
+  logger.info('Запуск сервера');
+  logger.info('Создание express app');
   const app = express();
 
   // Global middlewares
@@ -32,6 +31,7 @@ try {
   app.use(requestLogger);
 
   // API маршруты
+  logger.info('Регистрация API маршрутов');
   app.use('/api/bitcoin', bitcoinRoutes);
   app.use('/api/moon', moonRoutes);
   app.use('/api/astro', astroRoutes);
@@ -44,6 +44,7 @@ try {
 
   // Отдача статичных файлов в production
   if (config.server.env === 'production') {
+    logger.info('Настройка статичных файлов для production');
     app.use(express.static(path.join(__dirname, '../../client/dist')));
 
     app.get('*', (req, res) => {
@@ -59,11 +60,12 @@ try {
 
   // Запуск сервера
   app.listen(config.server.port, () => {
-    console.log(`Сервер запущен на порту ${config.server.port} (env: ${config.server.env})`);
+    logger.info(`Сервер запущен на порту ${config.server.port} (env: ${config.server.env})`);
     // Запуск периодического обновления данных
-    DataSyncService.initialize();
+    logger.info('Инициализация сервиса синхронизации данных');
+    dataSyncService.initialize();
   });
 } catch (e) {
-  console.error('FATAL ERROR при запуске сервера:', e);
+  logger.error('FATAL ERROR при запуске сервера:', e);
   process.exit(1);
 }

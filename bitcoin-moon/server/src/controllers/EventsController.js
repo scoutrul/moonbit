@@ -1,5 +1,5 @@
-const eventsService = require('../services/EventsService');
-const logger = require('../utils/logger');
+import eventsService from '../services/EventsService.js';
+import logger from '../utils/logger.js';
 
 /**
  * Контроллер для работы с событиями
@@ -79,4 +79,5 @@ class EventsController {
 }
 
 // Экспортируем синглтон
-module.exports = new EventsController();
+const eventsController = new EventsController();
+export default eventsController;

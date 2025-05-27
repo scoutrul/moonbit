@@ -1,5 +1,5 @@
-const logger = require('../utils/logger');
-const astroRepository = require('../repositories/AstroRepository');
+import logger from '../utils/logger.js';
+import astroRepository from '../repositories/AstroRepository.js';
 
 /**
  * Сервис для работы с астрологическими данными
@@ -248,54 +248,73 @@ class AstroService {
 
     const trendScore = retroTrendScore * retroWeight + aspectTrendScore * aspectWeight;
 
-    // Определяем общий тренд
-    let overallTrend;
+    // Общий прогноз
+    let trend;
     if (trendScore > 0.5) {
-      overallTrend = 'положительный';
+      trend = 'положительный';
     } else if (trendScore > 0.1) {
-      overallTrend = 'слабо положительный';
-    } else if (trendScore < -0.5) {
-      overallTrend = 'негативный';
-    } else if (trendScore < -0.1) {
-      overallTrend = 'слабо негативный';
+      trend = 'слабо положительный';
+    } else if (trendScore > -0.1) {
+      trend = 'нейтральный';
+    } else if (trendScore > -0.5) {
+      trend = 'слабо негативный';
     } else {
-      overallTrend = 'нейтральный';
+      trend = 'негативный';
     }
 
-    // Определяем общую волатильность
-    const volatilityMap = {
-      'очень высокая': 4,
-      высокая: 3,
-      повышенная: 2,
-      умеренная: 1,
-      низкая: 0.5,
-      нормальная: 1,
-    };
-
-    const retroVolScore = volatilityMap[retrogradeInfluence.volatility] || 1;
-    const aspectVolScore = volatilityMap[aspectsInfluence.volatility] || 1;
-
-    const volatilityScore = retroVolScore * retroWeight + aspectVolScore * aspectWeight;
-
-    let overallVolatility;
-    if (volatilityScore > 3) {
-      overallVolatility = 'очень высокая';
-    } else if (volatilityScore > 2) {
-      overallVolatility = 'высокая';
-    } else if (volatilityScore > 1.5) {
-      overallVolatility = 'повышенная';
-    } else if (volatilityScore > 1) {
-      overallVolatility = 'умеренная';
+    // Волатильность
+    let volatility;
+    if (strengthScore > 4) {
+      volatility = 'очень высокая';
+    } else if (strengthScore > 3) {
+      volatility = 'высокая';
+    } else if (strengthScore > 2) {
+      volatility = 'умеренная';
+    } else if (strengthScore > 1) {
+      volatility = 'низкая';
     } else {
-      overallVolatility = 'низкая';
+      volatility = 'очень низкая';
     }
 
     return {
-      trend: overallTrend,
-      volatility: overallVolatility,
+      trend,
+      volatility,
       strength: Math.round(strengthScore * 10) / 10,
+      description: this.generateForecastDescription(trend, volatility, strengthScore),
     };
+  }
+
+  /**
+   * Генерирует текстовое описание прогноза
+   * @param {string} trend - Направление тренда
+   * @param {string} volatility - Уровень волатильности
+   * @param {number} strength - Сила влияния
+   * @returns {string} Текстовое описание прогноза
+   */
+  generateForecastDescription(trend, volatility, strength) {
+    const trendDescription = {
+      положительный: 'рост цены биткоина',
+      'слабо положительный': 'умеренный рост цены биткоина',
+      нейтральный: 'стабильность цены биткоина',
+      'слабо негативный': 'умеренное снижение цены биткоина',
+      негативный: 'снижение цены биткоина',
+    };
+
+    const volatilityDescription = {
+      'очень высокая': 'значительными колебаниями',
+      высокая: 'заметными колебаниями',
+      умеренная: 'умеренными колебаниями',
+      низкая: 'низкой волатильностью',
+      'очень низкая': 'минимальной волатильностью',
+    };
+
+    if (strength < 1) {
+      return 'Астрологические факторы оказывают минимальное влияние на рынок биткоина';
+    }
+
+    return `Астрологические факторы указывают на ${trendDescription[trend]} с ${volatilityDescription[volatility]}`;
   }
 }
 
-module.exports = new AstroService();
+const astroService = new AstroService();
+export default astroService;

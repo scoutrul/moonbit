@@ -1,6 +1,7 @@
-const express = require('express');
+import express from 'express';
+import astroController from '../controllers/AstroController.js';
+
 const router = express.Router();
-const astroController = require('../controllers/AstroController');
 
 /**
  * @route GET /api/astro/current
@@ -11,18 +12,25 @@ router.get('/current', astroController.getCurrentAstroData);
 
 /**
  * @route GET /api/astro/retrograde
- * @desc Получает информацию о ретроградных планетах
+ * @desc Получает данные о ретроградных планетах
  * @access Public
- * @query {string} date - Дата в формате YYYY-MM-DD
+ * @query {string} date - Дата (если не указана, используется текущая)
  */
 router.get('/retrograde', astroController.getRetrogradePlanets);
 
 /**
  * @route GET /api/astro/aspects
- * @desc Получает информацию о планетарных аспектах
+ * @desc Получает данные о планетарных аспектах
  * @access Public
- * @query {string} date - Дата в формате YYYY-MM-DD
+ * @query {string} date - Дата (если не указана, используется текущая)
  */
 router.get('/aspects', astroController.getPlanetaryAspects);
 
-module.exports = router;
+/**
+ * @route GET /api/astro/influence
+ * @desc Получает анализ влияния астрологических факторов на рынок биткоина
+ * @access Public
+ */
+router.get('/influence', astroController.getAstroInfluence);
+
+export default router;

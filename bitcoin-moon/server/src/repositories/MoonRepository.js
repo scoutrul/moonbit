@@ -1,13 +1,13 @@
-const axios = require('axios');
-const logger = require('../utils/logger');
-const config = require('../utils/config');
-const BaseRepository = require('./BaseRepository');
-const {
+import axios from 'axios';
+import logger from '../utils/logger.js';
+import config from '../config/index.js';
+import BaseRepository from './BaseRepository.js';
+import {
   calculateMoonPhase,
   getMoonPhaseName,
   getMoonPhasesForPeriod,
   findNextSignificantPhases,
-} = require('../utils/moonCalculations');
+} from '../utils/moonCalculations.js';
 
 const USE_MOCK = process.env.USE_MOCK_DATA === 'true' || !config.api.farmsense;
 
@@ -238,4 +238,5 @@ class MoonRepository extends BaseRepository {
   }
 }
 
-module.exports = new MoonRepository();
+const moonRepository = new MoonRepository();
+export default moonRepository;

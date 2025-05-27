@@ -1,7 +1,6 @@
-const moonService = require('../services/MoonService');
-const logger = require('../utils/logger');
-const { validateResponse } = require('../utils/validators');
-const { schemas } = require('../utils/validators');
+import moonService from '../services/MoonService.js';
+import logger from '../utils/logger.js';
+import { validateResponse, schemas } from '../utils/validators.js';
 
 /**
  * Контроллер для работы с данными о фазах луны
@@ -13,14 +12,14 @@ class MoonController {
    * @param {Object} res - Express response
    * @param {Function} next - Express next
    */
-  async getCurrentPhase(req, res, next) {
+  getCurrentPhase(req, res, next) {
     try {
-      const phase = moonService.getCurrentPhase();
-
+      const phaseData = moonService.getCurrentPhase();
+      
       // Валидируем ответ
-      const validatedPhase = validateResponse(schemas.moonPhaseResponse, phase);
-
-      res.json(validatedPhase);
+      const validatedData = validateResponse(schemas.moonPhaseResponse, phaseData);
+      
+      res.json(validatedData);
     } catch (error) {
       logger.error('Ошибка при получении текущей фазы луны', { error: error.message });
       next(error);
@@ -28,17 +27,17 @@ class MoonController {
   }
 
   /**
-   * Получает фазы луны за период
+   * Получает фазы луны для указанного периода
    * @param {Object} req - Express request
    * @param {Object} res - Express response
    * @param {Function} next - Express next
    */
-  async getPhasesForPeriod(req, res, next) {
+  getPhasesForPeriod(req, res, next) {
     try {
       const { startDate, endDate } = req.query;
 
-      const phases = moonService.getPhasesForPeriod(startDate, endDate);
-      res.json(phases);
+      const phasesData = moonService.getPhasesForPeriod(startDate, endDate);
+      res.json(phasesData);
     } catch (error) {
       logger.error('Ошибка при получении фаз луны за период', {
         error: error.message,
@@ -55,17 +54,12 @@ class MoonController {
    * @param {Object} res - Express response
    * @param {Function} next - Express next
    */
-  async getNextSignificantPhases(req, res, next) {
+  getNextSignificantPhases(req, res, next) {
     try {
       const { count } = req.query;
-      const phases = moonService.getNextSignificantPhases(count);
 
-      // Валидируем каждую фазу в ответе
-      const validatedPhases = phases.map((phase) =>
-        validateResponse(schemas.significantMoonPhaseResponse, phase)
-      );
-
-      res.json(validatedPhases);
+      const phasesData = moonService.getNextSignificantPhases(count);
+      res.json(phasesData);
     } catch (error) {
       logger.error('Ошибка при получении следующих значимых фаз луны', {
         error: error.message,
@@ -74,7 +68,25 @@ class MoonController {
       next(error);
     }
   }
+
+  /**
+   * Получает анализ влияния фаз луны на рынок биткоина
+   * @param {Object} req - Express request
+   * @param {Object} res - Express response
+   * @param {Function} next - Express next
+   */
+  getMoonInfluence(req, res, next) {
+    try {
+      // Можно было бы запросить исторические данные биткоина
+      // и передать их в метод анализа
+      const influenceData = moonService.analyzeMoonInfluence();
+      res.json(influenceData);
+    } catch (error) {
+      logger.error('Ошибка при получении анализа влияния фаз луны', { error: error.message });
+      next(error);
+    }
+  }
 }
 
-// Экспортируем синглтон
-module.exports = new MoonController();
+const moonController = new MoonController();
+export default moonController;

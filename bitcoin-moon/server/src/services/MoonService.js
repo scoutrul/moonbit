@@ -1,5 +1,5 @@
-const logger = require('../utils/logger');
-const moonRepository = require('../repositories/MoonRepository');
+import logger from '../utils/logger.js';
+import moonRepository from '../repositories/MoonRepository.js';
 
 /**
  * Сервис для работы с данными о фазах луны
@@ -155,4 +155,5 @@ class MoonService {
   }
 }
 
-module.exports = new MoonService();
+const moonService = new MoonService();
+export default moonService;

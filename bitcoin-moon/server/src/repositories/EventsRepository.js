@@ -1,6 +1,6 @@
-const axios = require('axios');
-const logger = require('../utils/logger');
-const BaseRepository = require('./BaseRepository');
+import axios from 'axios';
+import logger from '../utils/logger.js';
+import BaseRepository from './BaseRepository.js';
 
 /**
  * Репозиторий для работы с данными о событиях
@@ -136,4 +136,5 @@ class EventsRepository extends BaseRepository {
   }
 }
 
-module.exports = new EventsRepository();
+const eventsRepository = new EventsRepository();
+export default eventsRepository;

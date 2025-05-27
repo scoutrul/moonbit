@@ -1,5 +1,5 @@
-const logger = require('../utils/logger');
-const eventsRepository = require('../repositories/EventsRepository');
+import logger from '../utils/logger.js';
+import eventsRepository from '../repositories/EventsRepository.js';
 
 /**
  * Сервис для работы с событиями, связанными с биткоином
@@ -165,4 +165,5 @@ class EventsService {
   }
 }
 
-module.exports = new EventsService();
+const eventsService = new EventsService();
+export default eventsService;

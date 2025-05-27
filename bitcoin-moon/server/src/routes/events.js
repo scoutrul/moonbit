@@ -1,8 +1,9 @@
-const express = require('express');
+import express from 'express';
+import eventsController from '../controllers/EventsController.js';
+import { validate } from '../utils/middlewares.js';
+import { schemas } from '../utils/validators.js';
+
 const router = express.Router();
-const eventsController = require('../controllers/EventsController');
-const { validate } = require('../utils/middlewares');
-const { schemas } = require('../utils/validators');
 
 /**
  * @route GET /api/events/recent
@@ -30,4 +31,4 @@ router.get('/period', eventsController.getEventsByPeriod);
  */
 router.get('/importance/:level', eventsController.getEventsByImportance);
 
-module.exports = router;
+export default router;

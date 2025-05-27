@@ -1,5 +1,5 @@
-const { z } = require('zod');
-const logger = require('./logger');
+import { z } from 'zod';
+import logger from './logger.js';
 
 /**
  * Схемы валидации данных с использованием Zod
@@ -141,16 +141,16 @@ function validateResponse(schema, data) {
   }
 }
 
-module.exports = {
-  validateRequest,
-  validateResponse,
-  schemas: {
-    moonPeriodRequest: moonPeriodRequestSchema,
-    moonNextRequest: moonNextRequestSchema,
-    moonPhaseResponse: moonPhaseResponseSchema,
-    significantMoonPhaseResponse: significantMoonPhaseResponseSchema,
-    bitcoinPriceRequest: bitcoinPriceRequestSchema,
-    bitcoinCurrentPriceResponse: bitcoinCurrentPriceResponseSchema,
-    eventsRequest: eventsRequestSchema,
-  },
+// Экспортируем функции и схемы
+export { validateRequest, validateResponse };
+
+// Экспортируем схемы
+export const schemas = {
+  moonPeriodRequest: moonPeriodRequestSchema,
+  moonNextRequest: moonNextRequestSchema,
+  moonPhaseResponse: moonPhaseResponseSchema,
+  significantMoonPhaseResponse: significantMoonPhaseResponseSchema,
+  bitcoinPriceRequest: bitcoinPriceRequestSchema,
+  bitcoinCurrentPriceResponse: bitcoinCurrentPriceResponseSchema,
+  eventsRequest: eventsRequestSchema,
 };

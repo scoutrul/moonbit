@@ -117,7 +117,7 @@ function findNextSignificantPhases(fromDate, count = 4) {
 }
 
 // Экспортируем чистые функции для использования в сервисе и тестах
-module.exports = {
+export {
   calculateMoonPhase,
   getMoonPhaseName,
   getMoonPhasesForPeriod,

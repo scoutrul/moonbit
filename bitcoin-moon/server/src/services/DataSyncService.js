@@ -1,10 +1,10 @@
-const fs = require('fs');
-const logger = require('../utils/logger');
-const bitcoinService = require('./BitcoinService');
-const moonService = require('./MoonService');
-const astroService = require('./AstroService');
-const eventsService = require('./EventsService');
-const config = require('../config');
+import fs from 'fs';
+import logger from '../utils/logger.js';
+import bitcoinService from './BitcoinService.js';
+import moonService from './MoonService.js';
+import astroService from './AstroService.js';
+import eventsService from './EventsService.js';
+import config from '../config/index.js';
 
 /**
  * Сервис синхронизации данных
@@ -247,4 +247,5 @@ class DataSyncService {
 }
 
 // Синглтон экземпляр сервиса
-module.exports = new DataSyncService();
+const dataSyncService = new DataSyncService();
+export { dataSyncService };

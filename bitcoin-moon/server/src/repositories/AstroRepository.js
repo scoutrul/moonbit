@@ -1,5 +1,5 @@
-const logger = require('../utils/logger');
-const BaseRepository = require('./BaseRepository');
+import logger from '../utils/logger.js';
+import BaseRepository from './BaseRepository.js';
 
 /**
  * Репозиторий для работы с астрологическими данными
@@ -27,6 +27,9 @@ class AstroRepository extends BaseRepository {
       { name: 'Нептун', retroPeriod: [158, 165], influence: 'иллюзии, неопределенность' },
       { name: 'Плутон', retroPeriod: [180, 187], influence: 'трансформация, власть' },
     ];
+
+    // Типы аспектов
+    this.aspectTypes = ['соединение', 'оппозиция', 'квадрат', 'трин', 'секстиль'];
   }
 
   /**
@@ -111,7 +114,6 @@ class AstroRepository extends BaseRepository {
     // Примечание: это упрощенная симуляция
     // В реальном приложении использовались бы астрономические алгоритмы
     const result = [];
-    const aspectTypes = ['соединение', 'оппозиция', 'квадрат', 'трин', 'секстиль'];
     const influences = [
       'повышенная волатильность',
       'резкие изменения тренда',
@@ -139,7 +141,7 @@ class AstroRepository extends BaseRepository {
         const planet2 = this.planets[planet2Index];
 
         // Выбираем тип аспекта и влияние
-        const aspectType = aspectTypes[(dayOfYear + i * 7) % aspectTypes.length];
+        const aspectType = this.aspectTypes[(dayOfYear + i * 7) % this.aspectTypes.length];
         const influence = influences[(dayOfYear + i * 11) % influences.length];
 
         // Рассчитываем "градус" аспекта
@@ -168,4 +170,5 @@ class AstroRepository extends BaseRepository {
   }
 }
 
-module.exports = new AstroRepository();
+const astroRepository = new AstroRepository();
+export default astroRepository;

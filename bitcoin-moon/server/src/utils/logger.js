@@ -1,7 +1,12 @@
-const winston = require('winston');
-const path = require('path');
-const fs = require('fs');
-const config = require('../config');
+import winston from 'winston';
+import path from 'path';
+import fs from 'fs';
+import config from '../config/index.js';
+import { fileURLToPath } from 'url';
+
+// Получение пути текущего файла в ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Создаем директорию для логов, если она не существует
 const logDir = config.paths.logs;
@@ -110,4 +115,4 @@ logger.logRequest = (req, res, next) => {
   next();
 };
 
-module.exports = logger;
+export default logger;
