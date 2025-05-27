@@ -50,5 +50,8 @@
     "*.{json,md}": [
       "prettier --write"
     ]
+  },
+  "dependencies": {
+    "astronomia": "^4.1.1"
   }
 }
