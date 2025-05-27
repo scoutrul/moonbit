@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
+import EventsService from '../services/EventsService';
 
 // Инициализируем русскую локализацию
 dayjs.locale('ru');
@@ -15,30 +15,11 @@ const UpcomingEvents = () => {
     const fetchEvents = async () => {
       try {
         setLoading(true);
-
-        // Получаем данные о предстоящих событиях
-        const [moonResponse, astroResponse, userEventsResponse] = await Promise.all([
-          axios.get('/api/moon/phases'),
-          axios.get('/api/astro/events'),
-          axios.get('/api/events'),
-        ]);
-
-        // Объединяем все события
-        const allEvents = [
-          ...moonResponse.data.map((e) => ({ ...e, type: 'moon' })),
-          ...astroResponse.data.map((e) => ({ ...e, type: 'astro' })),
-          ...userEventsResponse.data.map((e) => ({ ...e, type: 'user' })),
-        ];
-
-        // Сортируем по дате
-        const sortedEvents = allEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        // Фильтруем только будущие события
-        const futureEvents = sortedEvents.filter((e) => new Date(e.date) > new Date());
-
-        // Берем только ближайшие 5 событий
-        setEvents(futureEvents.slice(0, 5));
-
+        
+        // Получаем предстоящие события через сервис
+        const upcomingEvents = await EventsService.getUpcomingEvents(5);
+        setEvents(upcomingEvents);
+        
         setError(null);
       } catch (err) {
         console.error('Ошибка при получении событий:', err);
@@ -55,8 +36,14 @@ const UpcomingEvents = () => {
     return dayjs(dateString).format('D MMMM YYYY');
   };
 
-  const getEventIcon = (type) => {
-    switch (type) {
+  const getEventIcon = (event) => {
+    // Если у события есть иконка, используем её
+    if (event.icon) {
+      return event.icon;
+    }
+    
+    // Иначе используем иконку по типу события
+    switch (event.type) {
       case 'moon':
         return '🌙';
       case 'astro':
@@ -108,10 +95,13 @@ const UpcomingEvents = () => {
         <ul className="space-y-3">
           {events.map((event) => (
             <li key={event.id} className="flex items-start">
-              <span className="text-xl mr-3">{getEventIcon(event.type)}</span>
+              <span className="text-xl mr-3">{getEventIcon(event)}</span>
               <div>
                 <p className="font-medium">{event.title}</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">{formatDate(event.date)}</p>
+                {event.description && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{event.description}</p>
+                )}
               </div>
             </li>
           ))}
