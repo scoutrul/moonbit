@@ -1,8 +1,8 @@
 const BitcoinService = require('../../src/services/BitcoinService');
+const bitcoinRepository = require('../../src/repositories/BitcoinRepository');
 
-// Мокируем модуль node-fetch
-jest.mock('node-fetch');
-const fetch = require('node-fetch');
+// Мокируем модуль репозитория
+jest.mock('../../src/repositories/BitcoinRepository');
 
 // Мокируем модуль логирования
 jest.mock('../../src/utils/logger', () => ({
@@ -16,107 +16,94 @@ describe('BitcoinService', () => {
     jest.clearAllMocks();
   });
 
-  describe('getCurrentPrice', () => {
-    it('should return cached price if cache is valid', async () => {
-      // Устанавливаем мок для внутреннего метода
-      const mockShouldUpdateCache = jest.spyOn(BitcoinService, 'shouldUpdateCache');
-      mockShouldUpdateCache.mockReturnValue(false);
+  describe('updatePriceData', () => {
+    it('should call repository to fetch price data', async () => {
+      // Мокируем ответ репозитория
+      const mockPriceData = { price: 55000, change24h: 3.2 };
+      bitcoinRepository.fetchCurrentPrice.mockResolvedValue(mockPriceData);
 
-      // Установим данные в кэш
-      BitcoinService.priceCache = {
-        price: 50000,
-        change24h: 2.5,
-      };
-
-      const result = await BitcoinService.getCurrentPrice();
+      // Вызываем тестируемый метод
+      const result = await BitcoinService.updatePriceData();
 
       // Проверяем результат
-      expect(result).toEqual({
-        price: 50000,
-        change24h: 2.5,
-      });
-      expect(mockShouldUpdateCache).toHaveBeenCalledWith('price');
-      expect(fetch).not.toHaveBeenCalled();
-
-      // Восстанавливаем оригинальный метод
-      mockShouldUpdateCache.mockRestore();
-    });
-
-    it('should update price data if cache is invalid', async () => {
-      // Устанавливаем мок для внутреннего метода
-      const mockShouldUpdateCache = jest.spyOn(BitcoinService, 'shouldUpdateCache');
-      mockShouldUpdateCache.mockReturnValue(true);
-
-      // Мокируем ответ fetch
-      const mockResponse = {
-        json: jest.fn().mockResolvedValue({
-          bitcoin: {
-            usd: 55000,
-            usd_24h_change: 3.2,
-          },
-        }),
-      };
-      fetch.mockResolvedValue(mockResponse);
-
-      const result = await BitcoinService.getCurrentPrice();
-
-      // Проверяем результат
-      expect(result).toEqual({
-        price: 55000,
-        change24h: 3.2,
-      });
-      expect(mockShouldUpdateCache).toHaveBeenCalledWith('price');
-      expect(fetch).toHaveBeenCalledWith(
-        'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true'
-      );
-
-      // Проверяем обновление кэша
-      expect(BitcoinService.priceCache).toEqual({
-        price: 55000,
-        change24h: 3.2,
-      });
-      expect(BitcoinService.lastUpdate.price).toBeDefined();
-
-      // Восстанавливаем оригинальный метод
-      mockShouldUpdateCache.mockRestore();
-    });
-
-    it('should handle API errors', async () => {
-      // Устанавливаем мок для внутреннего метода
-      const mockShouldUpdateCache = jest.spyOn(BitcoinService, 'shouldUpdateCache');
-      mockShouldUpdateCache.mockReturnValue(true);
-
-      // Мокируем ошибку fetch
-      fetch.mockRejectedValue(new Error('API Error'));
-
-      // Проверяем, что ошибка обрабатывается
-      await expect(BitcoinService.getCurrentPrice()).rejects.toThrow('API Error');
-
-      // Восстанавливаем оригинальный метод
-      mockShouldUpdateCache.mockRestore();
+      expect(result).toEqual(mockPriceData);
+      expect(bitcoinRepository.fetchCurrentPrice).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe('shouldUpdateCache', () => {
-    it('should return true if cache is not set', () => {
-      BitcoinService.lastUpdate.price = null;
-      expect(BitcoinService.shouldUpdateCache('price')).toBe(true);
+  describe('getCurrentPrice', () => {
+    it('should return price data from repository cache', () => {
+      // Мокируем данные из кэша репозитория
+      bitcoinRepository.getPriceCache.mockReturnValue({
+        usd: {
+          price: 50000,
+          change_24h: 2.5,
+          last_updated: new Date().toISOString(),
+          change_percentage_24h: 2.5
+        }
+      });
+
+      // Вызываем тестируемый метод
+      const result = BitcoinService.getCurrentPrice();
+
+      // Проверяем результат
+      expect(result).toHaveProperty('price', 50000);
+      expect(result).toHaveProperty('change_24h', 2.5);
+      expect(bitcoinRepository.getPriceCache).toHaveBeenCalledTimes(1);
     });
 
-    it('should return true if cache is expired', () => {
-      // Устанавливаем время последнего обновления на 2 минуты назад
-      const twoMinutesAgo = Date.now() - 2 * 60 * 1000;
-      BitcoinService.lastUpdate.price = twoMinutesAgo;
+    it('should trigger cache update if data is stale', () => {
+      // Мокируем устаревшие данные из кэша
+      const oldDate = new Date();
+      oldDate.setHours(oldDate.getHours() - 2); // 2 часа назад
+      
+      bitcoinRepository.getPriceCache.mockReturnValue({
+        usd: {
+          price: 50000,
+          change_24h: 2.5,
+          last_updated: oldDate.toISOString(),
+          change_percentage_24h: 2.5
+        }
+      });
 
-      expect(BitcoinService.shouldUpdateCache('price')).toBe(true);
+      // Сохраняем оригинальный метод updatePriceData
+      const originalUpdatePriceData = BitcoinService.updatePriceData;
+      // Заменяем на мок для проверки вызова
+      BitcoinService.updatePriceData = jest.fn().mockResolvedValue({});
+
+      // Вызываем тестируемый метод
+      const result = BitcoinService.getCurrentPrice();
+
+      // Проверяем результат
+      expect(result).toHaveProperty('price', 50000);
+      expect(BitcoinService.updatePriceData).toHaveBeenCalledTimes(1);
+
+      // Восстанавливаем оригинальный метод
+      BitcoinService.updatePriceData = originalUpdatePriceData;
     });
+  });
 
-    it('should return false if cache is still valid', () => {
-      // Устанавливаем время последнего обновления на 30 секунд назад
-      const thirtySecondsAgo = Date.now() - 30 * 1000;
-      BitcoinService.lastUpdate.price = thirtySecondsAgo;
+  describe('getHistoricalData', () => {
+    it('should return historical data from repository cache', () => {
+      // Мокируем данные из кэша репозитория
+      const mockData = [
+        { timestamp: 1617235200, price: 58000 },
+        { timestamp: 1617321600, price: 59500 }
+      ];
+      
+      bitcoinRepository.getHistoricalCache.mockReturnValue({
+        usd: {
+          data: mockData,
+          last_updated: new Date().toISOString()
+        }
+      });
 
-      expect(BitcoinService.shouldUpdateCache('price')).toBe(false);
+      // Вызываем тестируемый метод
+      const result = BitcoinService.getHistoricalData();
+
+      // Проверяем результат
+      expect(result).toEqual(mockData);
+      expect(bitcoinRepository.getHistoricalCache).toHaveBeenCalledTimes(1);
     });
   });
 });
