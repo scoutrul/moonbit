@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import BitcoinService from '../services/BitcoinService';
+import { subscribeToPriceUpdates } from '../utils/mockDataGenerator';
 
 const CurrentPrice = () => {
   const [priceData, setPriceData] = useState({
@@ -11,6 +12,35 @@ const CurrentPrice = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [priceAnimation, setPriceAnimation] = useState(null); // 'up', 'down', null
+  const unsubscribeRef = useRef(null);
+  const lastPriceRef = useRef(null);
+
+  // Обработчик обновления цены в реальном времени
+  const handlePriceUpdate = (data) => {
+    if (!priceData.price) return;
+
+    // Определяем направление изменения цены
+    if (lastPriceRef.current !== null) {
+      const newAnimation = data.price > lastPriceRef.current ? 'up' : 'down';
+      setPriceAnimation(newAnimation);
+      
+      // Сбрасываем анимацию через 2 секунды
+      setTimeout(() => {
+        setPriceAnimation(null);
+      }, 2000);
+    }
+    
+    // Обновляем последнюю цену
+    lastPriceRef.current = data.price;
+    
+    // Обновляем данные о цене
+    setPriceData(prevData => ({
+      ...prevData,
+      price: data.price,
+      last_updated: new Date().toISOString(),
+    }));
+  };
 
   useEffect(() => {
     const fetchPrice = async () => {
@@ -18,6 +48,7 @@ const CurrentPrice = () => {
         setLoading(true);
         const data = await BitcoinService.getCurrentPrice(priceData.currency);
         setPriceData(data);
+        lastPriceRef.current = data.price;
         setError(null);
       } catch (err) {
         console.error('Ошибка при получении цены:', err);
@@ -29,10 +60,22 @@ const CurrentPrice = () => {
 
     fetchPrice();
 
-    // Обновляем каждую минуту
+    // Подписываемся на обновления цены в реальном времени
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+    }
+    
+    unsubscribeRef.current = subscribeToPriceUpdates(handlePriceUpdate);
+
+    // Обновляем полные данные каждую минуту
     const interval = setInterval(fetchPrice, 60000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+      }
+    };
   }, [priceData.currency]);
 
   const formatPrice = (price) => {
@@ -74,6 +117,13 @@ const CurrentPrice = () => {
     );
   };
 
+  const getPriceClass = () => {
+    if (!priceAnimation) return 'text-2xl font-bold transition-colors duration-500';
+    return `text-2xl font-bold transition-colors duration-500 ${
+      priceAnimation === 'up' ? 'text-green-500' : 'text-red-500'
+    }`;
+  };
+
   if (loading) {
     return (
       <div data-testid="loading-skeleton" className="animate-pulse">
@@ -107,7 +157,7 @@ const CurrentPrice = () => {
         <div>
           <h2 className="text-lg font-semibold">Bitcoin</h2>
           <div className="flex items-center">
-            <span data-testid="bitcoin-price" className="text-2xl font-bold">
+            <span data-testid="bitcoin-price" className={getPriceClass()}>
               {formatPrice(priceData.price)}
             </span>
             {renderChange()}
