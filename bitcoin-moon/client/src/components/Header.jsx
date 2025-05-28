@@ -1,5 +1,3 @@
-import React from 'react';
-
 const Header = ({ darkMode, toggleDarkMode }) => {
   return (
     <header className="bg-white dark:bg-gray-800 shadow">

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { createChart } from 'lightweight-charts';
 import BitcoinService from '../services/BitcoinService';
 import EventsService from '../services/EventsService';
@@ -14,7 +14,12 @@ const CandlestickChart = ({ timeframe }) => {
   const [data, setData] = useState([]);
   const [events, setEvents] = useState([]);
   const unsubscribeRef = useRef(null);
-  const [isDarkMode, setIsDarkMode] = useState(document.documentElement.classList.contains('dark'));
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // Инициализируем состояние темы при первом рендере
+    const isDark = document.documentElement.classList.contains('dark');
+    console.log('CandlestickChart - Начальная инициализация темы:', isDark ? 'темная' : 'светлая');
+    return isDark;
+  });
 
   // Цвета для графика
   const lightTheme = {
@@ -77,6 +82,15 @@ const CandlestickChart = ({ timeframe }) => {
 
   // Эффект для отслеживания изменения темы
   useEffect(() => {
+    // Проверяем текущее состояние темы при монтировании
+    const currentIsDark = document.documentElement.classList.contains('dark');
+    console.log('CandlestickChart - Текущее состояние темы при монтировании:', currentIsDark ? 'темная' : 'светлая');
+    
+    if (currentIsDark !== isDarkMode) {
+      console.log('CandlestickChart - Обновляем состояние темы при монтировании');
+      setIsDarkMode(currentIsDark);
+    }
+    
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (
@@ -84,8 +98,10 @@ const CandlestickChart = ({ timeframe }) => {
           mutation.target === document.documentElement
         ) {
           const newIsDarkMode = document.documentElement.classList.contains('dark');
+          console.log('CandlestickChart - Обнаружено изменение темы:', newIsDarkMode ? 'темная' : 'светлая');
           
           if (newIsDarkMode !== isDarkMode) {
+            console.log('CandlestickChart - Обновляем состояние isDarkMode');
             setIsDarkMode(newIsDarkMode);
           }
         }
@@ -186,13 +202,13 @@ const CandlestickChart = ({ timeframe }) => {
         },
       });
 
-      // Добавляем свечной график
+      // Добавляем свечной график с цветами, соответствующими теме
       const candlestickSeries = chart.addCandlestickSeries({
-        upColor: '#4caf50',
-        downColor: '#ef5350',
+        upColor: isDarkMode ? '#26a69a' : '#4caf50',
+        downColor: isDarkMode ? '#ef5350' : '#f44336', // Разные оттенки красного для разных тем
         borderVisible: false,
-        wickUpColor: '#4caf50',
-        wickDownColor: '#ef5350',
+        wickUpColor: isDarkMode ? '#26a69a' : '#4caf50',
+        wickDownColor: isDarkMode ? '#ef5350' : '#f44336', // Разные оттенки красного для разных тем
       });
 
       candlestickSeries.setData(data);

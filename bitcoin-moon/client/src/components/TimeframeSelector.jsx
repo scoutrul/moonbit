@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 const TimeframeSelector = ({ timeframe, onTimeframeChange }) => {
   const [showMore, setShowMore] = useState(false);

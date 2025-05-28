@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import BitcoinService from '../services/BitcoinService';
 import { subscribeToPriceUpdates } from '../utils/mockDataGenerator';
 

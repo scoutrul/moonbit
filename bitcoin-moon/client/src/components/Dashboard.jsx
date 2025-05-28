@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import CandlestickChart from './CandlestickChart';
+import { useState, useEffect } from 'react';
 import BitcoinChartWithLunarPhases from './BitcoinChartWithLunarPhases';
 import CurrentPrice from './CurrentPrice';
 import TimeframeSelector from './TimeframeSelector';

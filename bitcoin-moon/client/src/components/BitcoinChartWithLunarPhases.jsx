@@ -1,10 +1,8 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { createChart } from 'lightweight-charts';
 import BitcoinService from '../services/BitcoinService';
 import EventsService from '../services/EventsService';
 import { subscribeToPriceUpdates } from '../utils/mockDataGenerator';
-import { fetchAstroEvents } from '../services/astroEvents.js';
-import dayjs from 'dayjs';
 
 /**
  * Компонент для отображения графика биткоина с фазами Луны
@@ -22,7 +20,12 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
   const [events, setEvents] = useState([]);
   const [lunarEvents, setLunarEvents] = useState([]);
   const unsubscribeRef = useRef(null);
-  const [isDarkMode, setIsDarkMode] = useState(document.documentElement.classList.contains('dark'));
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // Инициализируем состояние темы при первом рендере
+    const isDark = document.documentElement.classList.contains('dark');
+    console.log('Начальная инициализация темы:', isDark ? 'темная' : 'светлая');
+    return isDark;
+  });
 
   // Цвета для графика
   const lightTheme = {
@@ -87,6 +90,15 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
 
   // Эффект для отслеживания изменения темы
   useEffect(() => {
+    // Проверяем текущее состояние темы при монтировании
+    const currentIsDark = document.documentElement.classList.contains('dark');
+    console.log('Текущее состояние темы при монтировании:', currentIsDark ? 'темная' : 'светлая');
+    
+    if (currentIsDark !== isDarkMode) {
+      console.log('Обновляем состояние темы при монтировании');
+      setIsDarkMode(currentIsDark);
+    }
+    
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (
@@ -94,8 +106,10 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
           mutation.target === document.documentElement
         ) {
           const newIsDarkMode = document.documentElement.classList.contains('dark');
+          console.log('Обнаружено изменение темы:', newIsDarkMode ? 'темная' : 'светлая');
           
           if (newIsDarkMode !== isDarkMode) {
+            console.log('Обновляем состояние isDarkMode');
             setIsDarkMode(newIsDarkMode);
           }
         }
@@ -143,7 +157,8 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
             
             console.log(`Получаем лунные фазы для диапазона: ${startDate.toISOString()} - ${endDate.toISOString()}`);
             
-            const lunarPhases = await fetchAstroEvents(startDate, endDate);
+            // Используем EventsService для получения лунных фаз с сервера
+            const lunarPhases = await EventsService.getEventsForChart(timeframe, startDate, endDate);
             console.log('Получено лунных фаз:', lunarPhases.length, lunarPhases);
             setLunarEvents(lunarPhases);
           } catch (err) {
@@ -191,6 +206,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
       }
       
       const theme = isDarkMode ? darkTheme : lightTheme;
+      console.log('Создаем график с темой:', isDarkMode ? 'темная' : 'светлая');
 
       const chart = createChart(chartContainerRef.current, {
         width: chartContainerRef.current.clientWidth,
@@ -215,13 +231,13 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
         },
       });
 
-      // Добавляем свечной график
+      // Добавляем свечной график с цветами, соответствующими теме
       const candlestickSeries = chart.addCandlestickSeries({
-        upColor: '#4caf50',
-        downColor: '#ef5350',
+        upColor: isDarkMode ? '#26a69a' : '#4caf50',
+        downColor: isDarkMode ? '#ef5350' : '#f44336', // Разные оттенки красного для разных тем
         borderVisible: false,
-        wickUpColor: '#4caf50',
-        wickDownColor: '#ef5350',
+        wickUpColor: isDarkMode ? '#26a69a' : '#4caf50',
+        wickDownColor: isDarkMode ? '#ef5350' : '#f44336', // Разные оттенки красного для разных тем
       });
 
       candlestickSeries.setData(chartData);
@@ -290,7 +306,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
         console.log('Добавляем маркеры для событий:', events.length);
         
         events.forEach(event => {
-          if (event.type !== 'moon') { // Пропускаем лунные события, т.к. мы их уже добавили
+          if (event.type !== 'new_moon' && event.type !== 'full_moon') { // Пропускаем лунные события, т.к. мы их уже добавили
             const eventDate = new Date(event.date);
             const eventTime = Math.floor(eventDate.getTime() / 1000);
             const price = getApproximatePriceForDate(eventDate, chartData);
@@ -301,9 +317,21 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
               let shape;
               
               switch (event.type) {
+                case 'solar_eclipse':
+                  color = '#ff6b6b'; // Красный
+                  shape = 'diamond';
+                  break;
+                case 'lunar_eclipse':
+                  color = '#6c5ce7'; // Фиолетовый
+                  shape = 'diamond';
+                  break;
                 case 'astro':
                   color = '#ec4899'; // Розовый
                   shape = 'square';
+                  break;
+                case 'economic':
+                  color = '#10b981'; // Зеленый
+                  shape = 'diamond';
                   break;
                 case 'user':
                   color = '#f97316'; // Оранжевый
@@ -348,6 +376,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
       }
       
       if (lunarMarkers.length > 0) {
+        lunarMarkers.sort((a, b) => a.time - b.time); // Сортировка по времени
         console.log('Устанавливаем маркеры на график:', lunarMarkers.length);
         markersSeries.setMarkers(lunarMarkers);
       }
@@ -467,4 +496,4 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
   );
 };
 
-export default BitcoinChartWithLunarPhases; 
+export default BitcoinChartWithLunarPhases;

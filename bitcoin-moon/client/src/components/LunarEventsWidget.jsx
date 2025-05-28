@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { fetchUpcomingEvents } from '../services/astroEvents.js';
+import { useEffect, useState } from 'react';
+import EventsService from '../services/EventsService';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
 
@@ -20,8 +20,8 @@ const LunarEventsWidget = () => {
         setIsLoading(true);
         console.log('LunarEventsWidget: Начинаем загрузку предстоящих лунных событий...');
         
-        // Получаем предстоящие лунные события на 30 дней вперед
-        const events = await fetchUpcomingEvents(30);
+        // Получаем предстоящие лунные события на 30 дней вперед с сервера
+        const events = await EventsService.getUpcomingLunarEvents(30);
         console.log('LunarEventsWidget: Получено событий:', events.length, events);
         
         if (events && events.length > 0) {
@@ -60,7 +60,9 @@ const LunarEventsWidget = () => {
     newMoonDate.setDate(newMoonDate.getDate() + 7);
     events.push({
       type: 'new_moon',
-      date: newMoonDate
+      date: newMoonDate,
+      title: 'Новолуние',
+      icon: '🌑'
     });
     
     // Полнолуние через 14 дней
@@ -68,7 +70,9 @@ const LunarEventsWidget = () => {
     fullMoonDate.setDate(fullMoonDate.getDate() + 14);
     events.push({
       type: 'full_moon',
-      date: fullMoonDate
+      date: fullMoonDate,
+      title: 'Полнолуние',
+      icon: '🌕'
     });
     
     // Новолуние через 21 день
@@ -76,7 +80,9 @@ const LunarEventsWidget = () => {
     newMoonDate2.setDate(newMoonDate2.getDate() + 21);
     events.push({
       type: 'new_moon',
-      date: newMoonDate2
+      date: newMoonDate2,
+      title: 'Новолуние',
+      icon: '🌑'
     });
     
     return events;
@@ -88,13 +94,13 @@ const LunarEventsWidget = () => {
   };
 
   // Функция для получения названия фазы луны
-  const getPhaseLabel = (type) => {
-    return type === 'new_moon' ? 'Новолуние' : 'Полнолуние';
+  const getPhaseLabel = (event) => {
+    return event.title || (event.type === 'new_moon' ? 'Новолуние' : 'Полнолуние');
   };
   
   // Функция для получения иконки фазы
-  const getPhaseIcon = (type) => {
-    return type === 'new_moon' ? '🌑' : '🌕';
+  const getPhaseIcon = (event) => {
+    return event.icon || (event.type === 'new_moon' ? '🌑' : '🌕');
   };
 
   if (isLoading) {
@@ -140,9 +146,9 @@ const LunarEventsWidget = () => {
               key={index} 
               className="flex items-center p-2 border-b border-gray-100 dark:border-gray-700 last:border-0"
             >
-              <span className="text-2xl mr-3">{getPhaseIcon(event.type)}</span>
+              <span className="text-2xl mr-3">{getPhaseIcon(event)}</span>
               <div className="flex-1">
-                <p className="font-medium text-gray-800 dark:text-white">{getPhaseLabel(event.type)}</p>
+                <p className="font-medium text-gray-800 dark:text-white">{getPhaseLabel(event)}</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">{formatDate(event.date)}</p>
               </div>
             </li>
@@ -153,4 +159,4 @@ const LunarEventsWidget = () => {
   );
 };
 
-export default LunarEventsWidget; 
+export default LunarEventsWidget;
