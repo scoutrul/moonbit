@@ -2,7 +2,6 @@
  * Сервис для работы с данными о событиях
  */
 import api from './api';
-import { fetchAstroEvents, fetchUpcomingEvents, fetchHistoricalEvents } from './astroEvents';
 import { generateMockEvents } from '../utils/mockDataGenerator';
 
 // Кэш событий для использования в разных компонентах
@@ -23,7 +22,7 @@ class EventsService {
         return eventsCache;
       }
 
-      // Получаем астрономические события
+      // Получаем астрономические события с сервера
       console.log('Получаем астрономические события для отображения');
       
       // Задаем диапазон дат - 3 месяца назад и 6 месяцев вперед
@@ -34,24 +33,16 @@ class EventsService {
       const endDate = new Date(now);
       endDate.setMonth(endDate.getMonth() + 6);
       
-      // Получаем астрономические события
-      const astroEventsData = await fetchAstroEvents(startDate, endDate);
-      
-      // Преобразуем данные о фазах луны в формат событий
-      const moonEvents = astroEventsData.map((event, index) => {
-        // Определяем иконку и полное название события
-        const icon = event.type === 'new_moon' ? '🌑' : '🌕';
-        const title = event.type === 'new_moon' ? 'Новолуние' : 'Полнолуние';
-        
-        return {
-          id: `moon-${event.type}-${index}`,
-          title: title,
-          date: event.date.toISOString(),
-          type: 'moon',
-          icon: icon,
-          description: `Фаза Луны: ${title}`
-        };
+      // Получаем лунные события с сервера
+      const response = await api.get('/moon/historical-events', {
+        params: {
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString()
+        }
       });
+      
+      const moonEvents = response.data;
+      console.log('Получено лунных событий:', moonEvents.length, moonEvents);
       
       // Получаем пользовательские события из мок-данных
       const mockEvents = generateMockEvents();
@@ -92,24 +83,14 @@ class EventsService {
    */
   async getUpcomingEvents(limit = 5) {
     try {
-      // Вместо использования getEvents, напрямую получаем предстоящие лунные события
-      const days = limit * 20; // Запрашиваем с запасом, чтобы точно получить limit событий
-      const upcomingLunarEvents = await fetchUpcomingEvents(days);
-      
-      // Преобразуем в формат событий
-      const events = upcomingLunarEvents.map((event, index) => {
-        const icon = event.type === 'new_moon' ? '🌑' : '🌕';
-        const title = event.type === 'new_moon' ? 'Новолуние' : 'Полнолуние';
-        
-        return {
-          id: `moon-upcoming-${event.type}-${index}`,
-          title: title,
-          date: event.date.toISOString(),
-          type: 'moon',
-          icon: icon,
-          description: `Фаза Луны: ${title}`
-        };
+      // Вместо локального расчета делаем запрос к серверу
+      const response = await api.get('/moon/upcoming-events', {
+        params: {
+          days: limit * 10 // Запрашиваем с запасом, чтобы точно получить limit событий
+        }
       });
+      
+      const events = response.data;
       
       // Сортируем по дате и ограничиваем количество
       return events.sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, limit);
@@ -184,28 +165,38 @@ class EventsService {
         }
       }
       
-      console.log(`Получаем лунные события для таймфрейма ${timeframe}: с ${startDate.toISOString()} по ${endDate.toISOString()}`);
+      console.log(`Получаем события для таймфрейма ${timeframe}: с ${startDate.toISOString()} по ${endDate.toISOString()}`);
       
-      // Получаем лунные события напрямую для указанного диапазона
-      const lunarEvents = await fetchAstroEvents(startDate, endDate);
-      
-      // Преобразуем в формат событий для графика
-      const events = lunarEvents.map((event, index) => {
-        const icon = event.type === 'new_moon' ? '🌑' : '🌕';
-        const title = event.type === 'new_moon' ? 'Новолуние' : 'Полнолуние';
-        
-        return {
-          id: `moon-chart-${event.type}-${index}`,
-          title: title,
-          date: event.date.toISOString(),
-          type: 'moon',
-          icon: icon
-        };
+      // Получаем лунные события с сервера
+      const moonResponse = await api.get('/moon/historical-events', {
+        params: {
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString()
+        }
       });
       
-      console.log(`Найдено ${events.length} лунных событий для таймфрейма ${timeframe}`);
+      const moonEvents = moonResponse.data;
+      console.log(`Найдено ${moonEvents.length} лунных событий для таймфрейма ${timeframe}`);
       
-      return events;
+      // Получаем данные о затмениях
+      const eclipseResponse = await api.get('/astro/eclipses', {
+        params: {
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString()
+        }
+      });
+      
+      const eclipseEvents = eclipseResponse.data;
+      console.log(`Найдено ${eclipseEvents.length} затмений для таймфрейма ${timeframe}`);
+      
+      // Объединяем все события
+      const allEvents = [
+        ...moonEvents,
+        ...eclipseEvents
+      ];
+      
+      // Сортируем по дате
+      return allEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
     } catch (error) {
       console.error('Ошибка при получении событий для графика:', error);
       
@@ -267,6 +258,69 @@ class EventsService {
       eventsCache.sort((a, b) => new Date(a.date) - new Date(b.date));
       
       return newEvent;
+    }
+  }
+
+  /**
+   * Получает лунные события с сервера
+   * @param {number} days - Количество дней
+   * @returns {Promise<Array>} Массив лунных событий
+   */
+  async getUpcomingLunarEvents(days = 30) {
+    try {
+      const response = await api.get('/moon/upcoming-events', {
+        params: { days }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка при получении лунных событий:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Получает экономические события с сервера
+   * @param {number} limit - Количество событий
+   * @returns {Promise<Array>} Массив экономических событий
+   */
+  async getEconomicEvents(limit = 10) {
+    try {
+      const response = await api.get('/economic/upcoming', {
+        params: { limit }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка при получении экономических событий:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Получает данные о затмениях (солнечных и лунных)
+   * @param {Date} startDate - Начальная дата (по умолчанию - текущая)
+   * @param {Date} endDate - Конечная дата (по умолчанию - через 3 года)
+   * @returns {Promise<Array>} Массив затмений
+   */
+  async getEclipses(startDate = new Date(), endDate = null) {
+    try {
+      // Если endDate не указан, установим его на 3 года вперед
+      if (!endDate) {
+        endDate = new Date(startDate);
+        endDate.setFullYear(endDate.getFullYear() + 3);
+      }
+      
+      const response = await api.get('/astro/eclipses', {
+        params: {
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString()
+        }
+      });
+      
+      console.log('Получено затмений:', response.data.length);
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка при получении затмений:', error);
+      return [];
     }
   }
 }

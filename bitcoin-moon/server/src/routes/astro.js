@@ -33,4 +33,31 @@ router.get('/aspects', astroController.getPlanetaryAspects);
  */
 router.get('/influence', astroController.getAstroInfluence);
 
+/**
+ * @route GET /api/astro/eclipses/solar
+ * @desc Получает предстоящие солнечные затмения
+ * @access Public
+ * @query {string} startDate - Начальная дата (если не указана, используется текущая)
+ * @query {string} endDate - Конечная дата (если не указана, используется +10 лет от startDate)
+ */
+router.get('/eclipses/solar', astroController.getSolarEclipses);
+
+/**
+ * @route GET /api/astro/eclipses/lunar
+ * @desc Получает предстоящие лунные затмения
+ * @access Public
+ * @query {string} startDate - Начальная дата (если не указана, используется текущая)
+ * @query {string} endDate - Конечная дата (если не указана, используется +10 лет от startDate)
+ */
+router.get('/eclipses/lunar', astroController.getLunarEclipses);
+
+/**
+ * @route GET /api/astro/eclipses
+ * @desc Получает все предстоящие затмения (солнечные и лунные)
+ * @access Public
+ * @query {string} startDate - Начальная дата (если не указана, используется текущая)
+ * @query {string} endDate - Конечная дата (если не указана, используется +10 лет от startDate)
+ */
+router.get('/eclipses', astroController.getAllEclipses);
+
 export default router;

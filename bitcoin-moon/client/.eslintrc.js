@@ -1,3 +1,4 @@
+/* eslint-env node */
 // Используем корневую конфигурацию ESLint
 module.exports = {
   extends: '../../.eslintrc.js',

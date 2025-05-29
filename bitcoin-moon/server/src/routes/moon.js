@@ -36,4 +36,8 @@ router.get('/next', validate(schemas.moonNextRequest), moonController.getNextSig
  */
 router.get('/influence', moonController.getMoonInfluence);
 
+// Новые маршруты для лунных событий
+router.get('/upcoming-events', moonController.getUpcomingLunarEvents);
+router.get('/historical-events', moonController.getHistoricalLunarEvents);
+
 export default router;

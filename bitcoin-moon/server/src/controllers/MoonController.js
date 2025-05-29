@@ -86,6 +86,47 @@ class MoonController {
       next(error);
     }
   }
+
+  /**
+   * Получает предстоящие лунные события
+   * @param {Object} req - Express request
+   * @param {Object} res - Express response
+   * @param {Function} next - Express next
+   */
+  getUpcomingLunarEvents(req, res, next) {
+    try {
+      const { days } = req.query;
+      const eventsData = moonService.getUpcomingLunarEvents(days || 30);
+      res.json(eventsData);
+    } catch (error) {
+      logger.error('Ошибка при получении предстоящих лунных событий', {
+        error: error.message,
+        days: req.query.days,
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Получает исторические лунные события
+   * @param {Object} req - Express request
+   * @param {Object} res - Express response
+   * @param {Function} next - Express next
+   */
+  getHistoricalLunarEvents(req, res, next) {
+    try {
+      const { startDate, endDate } = req.query;
+      const eventsData = moonService.getHistoricalLunarEvents(startDate, endDate);
+      res.json(eventsData);
+    } catch (error) {
+      logger.error('Ошибка при получении исторических лунных событий', {
+        error: error.message,
+        startDate: req.query.startDate,
+        endDate: req.query.endDate,
+      });
+      next(error);
+    }
+  }
 }
 
 const moonController = new MoonController();

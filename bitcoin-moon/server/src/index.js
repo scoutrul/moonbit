@@ -8,6 +8,7 @@ import bitcoinRoutes from './routes/bitcoin.js';
 import moonRoutes from './routes/moon.js';
 import astroRoutes from './routes/astro.js';
 import eventsRoutes from './routes/events.js';
+import economicRoutes from './routes/economic.js';
 import { dataSyncService } from './services/DataSyncService.js';
 import { fileURLToPath } from 'url';
 
@@ -36,6 +37,7 @@ try {
   app.use('/api/moon', moonRoutes);
   app.use('/api/astro', astroRoutes);
   app.use('/api/events', eventsRoutes);
+  app.use('/api/economic', economicRoutes);
 
   // Documentation
   app.get('/api/docs', (req, res) => {

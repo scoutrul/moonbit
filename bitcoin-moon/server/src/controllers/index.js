@@ -1,14 +1,16 @@
 /**
  * Индексный файл для экспорта всех контроллеров
  */
-const bitcoinController = require('./bitcoinController');
-const moonController = require('./moonController');
-const astroController = require('./astroController');
-const eventsController = require('./eventsController');
+import bitcoinController from './BitcoinController.js';
+import moonController from './MoonController.js';
+import astroController from './AstroController.js';
+import eventsController from './EventsController.js';
+import economicController from './EconomicController.js';
 
-module.exports = {
+export {
   bitcoinController,
   moonController,
   astroController,
   eventsController,
+  economicController
 };
