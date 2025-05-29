@@ -4,34 +4,46 @@ import astroController from '../controllers/AstroController.js';
 const router = express.Router();
 
 /**
- * @route GET /api/astro/current
- * @desc Получает текущие астрологические данные
+ * @route GET /api/astro/data
+ * @desc Получение текущих астрологических данных
  * @access Public
  */
-router.get('/current', astroController.getCurrentAstroData);
+router.get('/data', astroController.getCurrentAstroData);
 
 /**
  * @route GET /api/astro/retrograde
- * @desc Получает данные о ретроградных планетах
+ * @desc Получение данных о ретроградных планетах
  * @access Public
- * @query {string} date - Дата (если не указана, используется текущая)
  */
 router.get('/retrograde', astroController.getRetrogradePlanets);
 
 /**
  * @route GET /api/astro/aspects
- * @desc Получает данные о планетарных аспектах
+ * @desc Получение данных о планетарных аспектах
  * @access Public
- * @query {string} date - Дата (если не указана, используется текущая)
  */
 router.get('/aspects', astroController.getPlanetaryAspects);
 
 /**
  * @route GET /api/astro/influence
- * @desc Получает анализ влияния астрологических факторов на рынок биткоина
+ * @desc Получение анализа астрологического влияния
  * @access Public
  */
 router.get('/influence', astroController.getAstroInfluence);
+
+/**
+ * @route GET /api/astro/events
+ * @desc Получение астрономических событий на период
+ * @access Public
+ */
+router.get('/events', astroController.getAstroEvents);
+
+/**
+ * @route GET /api/astro/moon-phase
+ * @desc Получение текущей фазы луны
+ * @access Public
+ */
+router.get('/moon-phase', astroController.getCurrentMoonPhase);
 
 /**
  * @route GET /api/astro/eclipses/solar

@@ -6,8 +6,10 @@ export default defineConfig({
     baseURL: 'http://localhost:3000',
     video: 'on',
     trace: 'on',
-    screenshot: 'only-on-failure',
+    screenshot: 'on',
   },
+  /* Отключаем автоматический запуск серверов, так как они уже запущены */
+  /*
   webServer: [
     {
       command: 'cd bitcoin-moon/server && npm run dev',
@@ -22,6 +24,7 @@ export default defineConfig({
       timeout: 120 * 1000,
     },
   ],
+  */
   expect: {
     timeout: 10000,
   },

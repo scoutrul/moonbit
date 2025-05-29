@@ -98,14 +98,26 @@ class EconomicEventsService {
 
   /**
    * Получает предстоящие экономические события
+   * @param {number} limit - Максимальное количество событий
+   * @returns {Promise<Array>} Массив экономических событий
    */
-  async getUpcomingEvents(days = 30) {
+  async getUpcomingEvents(limit = 10) {
     try {
-      logger.debug(`EconomicEventsService: получение событий на ${days} дней`);
-      return this.generateUpcomingEvents(days);
+      // Проверяем параметры
+      if (isNaN(limit) || limit <= 0) {
+        logger.warn('EconomicEventsService: некорректный лимит, использую значение по умолчанию');
+        limit = 10;
+      }
+      
+      // Генерируем данные
+      const events = this.generateUpcomingEvents(limit);
+      logger.debug(`EconomicEventsService: сгенерировано ${events.length} предстоящих событий`);
+      
+      return events;
     } catch (error) {
-      logger.error('EconomicEventsService: ошибка при получении событий:', error);
-      throw error;
+      logger.error('EconomicEventsService: ошибка при получении предстоящих событий:', error);
+      // В случае ошибки возвращаем пустой массив вместо ошибки
+      return [];
     }
   }
 

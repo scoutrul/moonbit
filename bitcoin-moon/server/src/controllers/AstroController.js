@@ -1,11 +1,85 @@
-import astroService from '../services/AstroService.js';
+import AstroService from '../services/AstroService.js';
 import logger from '../utils/logger.js';
 import eclipseService from '../services/EclipseService.js';
 
 /**
- * Контроллер для работы с астрологическими данными
+ * Контроллер для работы с астрономическими данными
  */
 class AstroController {
+  /**
+   * Получает астрономические события для указанного периода
+   * @param {Object} req - HTTP запрос
+   * @param {Object} res - HTTP ответ
+   */
+  async getAstroEvents(req, res) {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({
+          success: false,
+          message: 'Необходимо указать startDate и endDate',
+        });
+      }
+      
+      // Проверяем формат дат
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: 'Некорректный формат даты',
+        });
+      }
+      
+      // Получаем затмения
+      const eclipses = AstroService.getEclipsesForPeriod(start, end);
+      
+      // Получаем другие астрономические события
+      const astroEvents = AstroService.getAstroEventsForPeriod(start, end);
+      
+      // Объединяем результаты
+      const allEvents = [...eclipses, ...astroEvents];
+      
+      // Сортируем по дате
+      allEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+      
+      return res.status(200).json({
+        success: true,
+        data: allEvents,
+      });
+    } catch (error) {
+      logger.error('AstroController: ошибка при получении астрономических событий:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Внутренняя ошибка сервера',
+      });
+    }
+  }
+  
+  /**
+   * Получает текущую фазу луны
+   * @param {Object} req - HTTP запрос
+   * @param {Object} res - HTTP ответ
+   */
+  async getCurrentMoonPhase(req, res) {
+    try {
+      const phase = AstroService.getMoonPhase();
+      
+      return res.status(200).json({
+        success: true,
+        data: phase,
+      });
+    } catch (error) {
+      logger.error('AstroController: ошибка при получении текущей фазы луны:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Внутренняя ошибка сервера',
+      });
+    }
+  }
+
   /**
    * Получает текущие астрологические данные
    * @param {Object} req - Express request
@@ -14,7 +88,7 @@ class AstroController {
    */
   getCurrentAstroData(req, res, next) {
     try {
-      const astroData = astroService.getCurrentAstroData();
+      const astroData = AstroService.getCurrentAstroData();
       res.json(astroData);
     } catch (error) {
       logger.error('Ошибка при получении астрологических данных', { error: error.message });
@@ -31,7 +105,7 @@ class AstroController {
   getRetrogradePlanets(req, res, next) {
     try {
       const { date } = req.query;
-      const planetsData = astroService.getRetrogradePlanets(date);
+      const planetsData = AstroService.getRetrogradePlanets(date);
       res.json(planetsData);
     } catch (error) {
       logger.error('Ошибка при получении данных о ретроградных планетах', {
@@ -51,7 +125,7 @@ class AstroController {
   getPlanetaryAspects(req, res, next) {
     try {
       const { date } = req.query;
-      const aspectsData = astroService.getPlanetaryAspects(date);
+      const aspectsData = AstroService.getPlanetaryAspects(date);
       res.json(aspectsData);
     } catch (error) {
       logger.error('Ошибка при получении данных о планетарных аспектах', {
@@ -70,7 +144,7 @@ class AstroController {
    */
   getAstroInfluence(req, res, next) {
     try {
-      const influenceData = astroService.analyzeAstroInfluence();
+      const influenceData = AstroService.analyzeAstroInfluence();
       res.json(influenceData);
     } catch (error) {
       logger.error('Ошибка при получении анализа астрологического влияния', { error: error.message });
@@ -163,5 +237,4 @@ class AstroController {
   }
 }
 
-const astroController = new AstroController();
-export default astroController;
+export default new AstroController();

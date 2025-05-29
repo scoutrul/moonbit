@@ -55,7 +55,7 @@ const config = {
   // API URLs и настройки
   api: {
     coingecko: {
-      key: process.env.COINGECKO_API_KEY,
+      key: process.env.COINGECKO_API_KEY || 'demo_key',
       baseUrl: 'https://api.coingecko.com/api/v3',
       endpoints: {
         price: '/simple/price',
@@ -67,7 +67,7 @@ const config = {
       },
     },
     farmsense: {
-      key: process.env.FARMSENSE_API_KEY,
+      key: process.env.FARMSENSE_API_KEY || 'demo_key',
       baseUrl: 'https://api.farmsense.net/v1/moonphases/',
     },
     bybit: {
@@ -103,8 +103,9 @@ const config = {
 
   // Настройки логирования
   logging: {
-    level: process.env.LOG_LEVEL || 'info',
+    level: process.env.LOG_LEVEL || 'debug',
     fileMaxSize: parseInt(process.env.LOG_FILE_MAX_SIZE || '5242880', 10), // 5MB по умолчанию
+    file: process.env.LOG_FILE || 'logs/server.log',
   },
 
   // Настройки CORS
@@ -143,6 +144,9 @@ const config = {
   client: {
     url: process.env.CLIENT_URL || 'http://localhost:3000',
   },
+
+  // Режим отладки
+  DEBUG: process.env.DEBUG === 'true' || true
 };
 
 export default config;

@@ -134,20 +134,32 @@ class MoonService {
   async getHistoricalLunarEvents(startDate, endDate) {
     try {
       if (!startDate || !endDate) {
-        throw new Error('Необходимо указать startDate и endDate');
+        logger.warn('MoonService: не указаны startDate или endDate, использую значения по умолчанию');
+        const now = new Date();
+        startDate = startDate || new Date(now.setMonth(now.getMonth() - 3)).toISOString();
+        endDate = endDate || new Date(now.setMonth(now.getMonth() + 6)).toISOString();
       }
       
+      // Проверяем формат дат
       const start = new Date(startDate);
       const end = new Date(endDate);
       
-      if (start >= end) {
-        throw new Error('startDate должна быть меньше endDate');
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        logger.error('MoonService: некорректный формат даты');
+        // Возвращаем пустой массив вместо ошибки
+        return [];
       }
       
-      return this.getLunarEventsForPeriod(start, end); // Changed from moonRepository.getLunarEventsForPeriod
+      if (start >= end) {
+        logger.warn('MoonService: startDate больше или равна endDate, меняю даты местами');
+        return this.getLunarEventsForPeriod(end, start);
+      }
+      
+      return this.getLunarEventsForPeriod(start, end);
     } catch (error) {
       logger.error('MoonService: ошибка при получении исторических лунных событий:', error);
-      throw error;
+      // Возвращаем пустой массив вместо ошибки
+      return [];
     }
   }
 
@@ -158,45 +170,77 @@ class MoonService {
    * @returns {Array} Список лунных событий
    */
   getLunarEventsForPeriod(startDate, endDate) {
-    logger.debug(`MoonService: getLunarEventsForPeriod called with startDate: ${startDate}, endDate: ${endDate}`);
-    const events = [];
+    try {
+      logger.debug(`MoonService: getLunarEventsForPeriod called with startDate: ${startDate}, endDate: ${endDate}`);
+      
+      // Проверяем даты
+      if (!startDate || !endDate || isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        logger.warn('MoonService: некорректные даты в getLunarEventsForPeriod');
+        return [];
+      }
+      
+      // Преобразуем даты в юлианские дни для библиотеки astronomia
+      const startJD = this._dateToJulianDay(new Date(startDate));
+      const endJD = this._dateToJulianDay(new Date(endDate));
 
-    // Преобразуем даты в юлианские дни для библиотеки astronomia
-    const startJD = this._dateToJulianDay(new Date(startDate));
-    const endJD = this._dateToJulianDay(new Date(endDate));
+      // Получаем все новолуния в диапазоне
+      const newMoons = this._getNewMoons(startJD, endJD);
 
-    // Получаем все новолуния в диапазоне
-    const newMoons = this._getNewMoons(startJD, endJD);
+      // Получаем все полнолуния в диапазоне
+      const fullMoons = this._getFullMoons(startJD, endJD);
 
-    // Получаем все полнолуния в диапазоне
-    const fullMoons = this._getFullMoons(startJD, endJD);
+      // Объединяем результаты и сортируем по дате
+      const allPhases = [
+        ...newMoons.map(date => ({
+          date: date.toISOString(),
+          type: 'new_moon',
+          phase: 0,
+          phaseName: 'Новолуние',
+          title: 'Новолуние',
+          icon: '🌑'
+        })),
+        ...fullMoons.map(date => ({
+          date: date.toISOString(),
+          type: 'full_moon',
+          phase: 0.5,
+          phaseName: 'Полнолуние',
+          title: 'Полнолуние',
+          icon: '🌕'
+        }))
+      ];
+      
+      // Сортируем по дате перед фильтрацией
+      allPhases.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // Объединяем результаты и сортируем по дате
-    const allPhases = [
-      ...newMoons.map(date => ({
-        date: date.toISOString(),
-        type: 'new_moon',
-        phase: 0,
-        phaseName: 'Новолуние',
-        title: 'Новолуние',
-        icon: '🌑'
-      })),
-      ...fullMoons.map(date => ({
-        date: date.toISOString(),
-        type: 'full_moon',
-        phase: 0.5,
-        phaseName: 'Полнолуние',
-        title: 'Полнолуние',
-        icon: '🌕'
-      }))
-    ].sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    // Фильтруем события, чтобы они точно попадали в запрошенный диапазон дат
-    // так как _getNewMoons и _getFullMoons могут вернуть ближайшие события вне диапазона
-    return allPhases.filter(phase => {
-      const phaseDate = new Date(phase.date);
-      return phaseDate >= new Date(startDate) && phaseDate <= new Date(endDate);
-    });
+      // Фильтруем события, чтобы они точно попадали в запрошенный диапазон дат
+      // так как _getNewMoons и _getFullMoons могут вернуть ближайшие события вне диапазона
+      const filteredEvents = allPhases.filter(phase => {
+        const phaseDate = new Date(phase.date);
+        return phaseDate >= new Date(startDate) && phaseDate <= new Date(endDate);
+      });
+      
+      // Дополнительная проверка и сортировка результатов
+      if (filteredEvents.length > 0) {
+        logger.debug(`MoonService: после фильтрации найдено ${filteredEvents.length} лунных событий`);
+        
+        // Проверим, отсортированы ли события в порядке возрастания даты
+        const sortedEvents = [...filteredEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        // Логируем отладочную информацию
+        sortedEvents.forEach((event, index) => {
+          logger.debug(`MoonService: событие ${index + 1}: ${event.title} - ${event.date}`);
+        });
+        
+        return sortedEvents;
+      }
+      
+      logger.debug('MoonService: после фильтрации не найдено лунных событий, возвращаю пустой массив');
+      return [];
+      
+    } catch (error) {
+      logger.error('MoonService: ошибка в getLunarEventsForPeriod:', error);
+      return [];
+    }
   }
 
   /**

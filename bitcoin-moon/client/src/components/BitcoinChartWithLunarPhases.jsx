@@ -13,7 +13,6 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
   const candlestickSeriesRef = useRef(null);
-  const markersSeriesRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [chartData, setChartData] = useState(data || []);
@@ -160,6 +159,21 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
             // Используем EventsService для получения лунных фаз с сервера
             const lunarPhases = await EventsService.getEventsForChart(timeframe, startDate, endDate);
             console.log('Получено лунных фаз:', lunarPhases.length, lunarPhases);
+            
+            // Сортируем данные по времени в порядке возрастания
+            lunarPhases.sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            // Сохраняем данные для отладки
+            if (typeof window !== 'undefined') {
+              window.__DEBUG_LUNAR_EVENTS = {
+                timeframe,
+                startDate: startDate.toISOString(),
+                endDate: endDate.toISOString(),
+                lunarPhases,
+                sortedLunarPhases: [...lunarPhases].sort((a, b) => new Date(a.date) - new Date(b.date))
+              };
+            }
+            
             setLunarEvents(lunarPhases);
           } catch (err) {
             console.error('Ошибка при загрузке лунных фаз:', err);
@@ -202,7 +216,6 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
         chartRef.current.remove();
         chartRef.current = null;
         candlestickSeriesRef.current = null;
-        markersSeriesRef.current = null;
       }
       
       const theme = isDarkMode ? darkTheme : lightTheme;
@@ -244,22 +257,18 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
       chartRef.current = chart;
       candlestickSeriesRef.current = candlestickSeries;
       
-      // Добавляем серию маркеров
-      const markersSeries = chart.addLineSeries({
-        lineVisible: false,
-        lastValueVisible: false,
-        priceLineVisible: false,
-      });
-      
-      markersSeriesRef.current = markersSeries;
-      
       // Готовим маркеры для лунных фаз
       const lunarMarkers = [];
+      const economicMarkers = [];
+      const astroMarkers = [];
       
       if (lunarEvents.length > 0) {
         console.log('Добавляем маркеры лунных фаз:', lunarEvents.length);
         
-        lunarEvents.forEach(phase => {
+        // Убедимся, что массив отсортирован по времени
+        const sortedLunarEvents = [...lunarEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        sortedLunarEvents.forEach(phase => {
           const phaseDate = new Date(phase.date);
           const phaseTime = Math.floor(phaseDate.getTime() / 1000);
           const price = getApproximatePriceForDate(phaseDate, chartData);
@@ -305,7 +314,10 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
       if (events.length > 0) {
         console.log('Добавляем маркеры для событий:', events.length);
         
-        events.forEach(event => {
+        // Сортируем события по времени
+        const sortedEvents = [...events].sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        sortedEvents.forEach(event => {
           if (event.type !== 'new_moon' && event.type !== 'full_moon') { // Пропускаем лунные события, т.к. мы их уже добавили
             const eventDate = new Date(event.date);
             const eventTime = Math.floor(eventDate.getTime() / 1000);
@@ -315,41 +327,66 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
               // Определяем цвет маркера в зависимости от типа события
               let color;
               let shape;
+              let position;
+              let priceOffset = 1.0;
+              
+              // Классифицируем события по типам
+              const isAstroEvent = ['solar_eclipse', 'lunar_eclipse', 'astro', 'moon'].includes(event.type);
+              const isEconomicEvent = ['economic', 'user'].includes(event.type);
               
               switch (event.type) {
                 case 'solar_eclipse':
                   color = '#ff6b6b'; // Красный
                   shape = 'diamond';
+                  position = 'belowBar';
+                  priceOffset = 0.97; // Ниже графика
                   break;
                 case 'lunar_eclipse':
                   color = '#6c5ce7'; // Фиолетовый
                   shape = 'diamond';
+                  position = 'aboveBar';
+                  priceOffset = 1.03; // Выше графика
                   break;
                 case 'astro':
                   color = '#ec4899'; // Розовый
                   shape = 'square';
+                  position = 'aboveBar';
+                  priceOffset = 1.04; // Ещё выше
                   break;
                 case 'economic':
                   color = '#10b981'; // Зеленый
                   shape = 'diamond';
+                  position = 'aboveBar';
+                  priceOffset = 1.06; // Значительно выше
                   break;
                 case 'user':
                   color = '#f97316'; // Оранжевый
                   shape = 'arrowUp';
+                  position = 'aboveBar';
+                  priceOffset = 1.08; // Самые высокие
                   break;
                 default:
                   color = '#60a5fa'; // Синий
                   shape = 'circle';
+                  position = 'aboveBar';
+                  priceOffset = 1.05;
               }
               
-              lunarMarkers.push({
+              const marker = {
                 time: eventTime,
-                position: 'aboveBar',
+                position: position,
                 color,
                 shape,
                 text: `${event.icon || ''} ${event.title}`,
                 size: 2
-              });
+              };
+              
+              // Распределяем маркеры по соответствующим массивам
+              if (isAstroEvent) {
+                astroMarkers.push(marker);
+              } else if (isEconomicEvent) {
+                economicMarkers.push(marker);
+              }
               
               // Создаем отдельную серию для текста
               const textSeries = chart.addLineSeries({
@@ -359,12 +396,12 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
               });
               
               textSeries.setData([
-                { time: eventTime, value: price * 1.02 }
+                { time: eventTime, value: price * priceOffset }
               ]);
               
               textSeries.setMarkers([{
                 time: eventTime,
-                position: 'aboveBar',
+                position: position,
                 shape: 'arrowDown',
                 color,
                 text: `${event.icon || ''} ${event.title}`,
@@ -375,10 +412,41 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
         });
       }
       
+      // Создаем серии для разных типов маркеров
       if (lunarMarkers.length > 0) {
+        const moonSeries = chart.addLineSeries({
+          lineVisible: false,
+          lastValueVisible: false,
+          priceLineVisible: false,
+        });
+        
         lunarMarkers.sort((a, b) => a.time - b.time); // Сортировка по времени
-        console.log('Устанавливаем маркеры на график:', lunarMarkers.length);
-        markersSeries.setMarkers(lunarMarkers);
+        console.log('Устанавливаем маркеры лунных фаз на график:', lunarMarkers.length);
+        moonSeries.setMarkers(lunarMarkers);
+      }
+      
+      if (astroMarkers.length > 0) {
+        const astroSeries = chart.addLineSeries({
+          lineVisible: false,
+          lastValueVisible: false,
+          priceLineVisible: false,
+        });
+        
+        astroMarkers.sort((a, b) => a.time - b.time); // Сортировка по времени
+        console.log('Устанавливаем астрономические маркеры на график:', astroMarkers.length);
+        astroSeries.setMarkers(astroMarkers);
+      }
+      
+      if (economicMarkers.length > 0) {
+        const economicSeries = chart.addLineSeries({
+          lineVisible: false,
+          lastValueVisible: false,
+          priceLineVisible: false,
+        });
+        
+        economicMarkers.sort((a, b) => a.time - b.time); // Сортировка по времени
+        console.log('Устанавливаем экономические маркеры на график:', economicMarkers.length);
+        economicSeries.setMarkers(economicMarkers);
       }
       
       chart.timeScale().fitContent();
@@ -400,7 +468,6 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
           chartRef.current.remove();
           chartRef.current = null;
           candlestickSeriesRef.current = null;
-          markersSeriesRef.current = null;
         }
       };
     }
@@ -440,14 +507,22 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
             График Bitcoin с фазами Луны
           </h3>
-          <div className="flex items-center">
-            <span className="flex items-center mr-4">
+          <div className="flex items-center text-xs">
+            <span className="flex items-center mr-3">
               <span className="w-3 h-3 rounded-full bg-blue-500 mr-1"></span>
-              <span className="text-sm text-gray-600 dark:text-gray-300">Новолуние</span>
+              <span className="text-gray-600 dark:text-gray-300">Новолуние</span>
+            </span>
+            <span className="flex items-center mr-3">
+              <span className="w-3 h-3 rounded-full bg-yellow-400 mr-1"></span>
+              <span className="text-gray-600 dark:text-gray-300">Полнолуние</span>
+            </span>
+            <span className="flex items-center mr-3">
+              <span className="w-3 h-3 rounded-sm bg-pink-500 mr-1"></span>
+              <span className="text-gray-600 dark:text-gray-300">Астро</span>
             </span>
             <span className="flex items-center">
-              <span className="w-3 h-3 rounded-full bg-yellow-400 mr-1"></span>
-              <span className="text-sm text-gray-600 dark:text-gray-300">Полнолуние</span>
+              <span className="w-3 h-3 transform rotate-45 bg-green-500 mr-1"></span>
+              <span className="text-gray-600 dark:text-gray-300">Экономика</span>
             </span>
           </div>
         </div>
@@ -477,19 +552,28 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
         <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
           График Bitcoin с фазами Луны
         </h3>
-        <div className="flex items-center">
-          <span className="flex items-center mr-4">
+        <div className="flex items-center text-xs">
+          <span className="flex items-center mr-3">
             <span className="w-3 h-3 rounded-full bg-blue-500 mr-1"></span>
-            <span className="text-sm text-gray-600 dark:text-gray-300">Новолуние</span>
+            <span className="text-gray-600 dark:text-gray-300">Новолуние</span>
+          </span>
+          <span className="flex items-center mr-3">
+            <span className="w-3 h-3 rounded-full bg-yellow-400 mr-1"></span>
+            <span className="text-gray-600 dark:text-gray-300">Полнолуние</span>
+          </span>
+          <span className="flex items-center mr-3">
+            <span className="w-3 h-3 rounded-sm bg-pink-500 mr-1"></span>
+            <span className="text-gray-600 dark:text-gray-300">Астро</span>
           </span>
           <span className="flex items-center">
-            <span className="w-3 h-3 rounded-full bg-yellow-400 mr-1"></span>
-            <span className="text-sm text-gray-600 dark:text-gray-300">Полнолуние</span>
+            <span className="w-3 h-3 transform rotate-45 bg-green-500 mr-1"></span>
+            <span className="text-gray-600 dark:text-gray-300">Экономика</span>
           </span>
         </div>
       </div>
       <div 
         ref={chartContainerRef} 
+        data-testid="bitcoin-chart"
         className="w-full h-[400px] bg-white dark:bg-gray-800 rounded-lg shadow"
       />
     </div>
