@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { createChart } from 'lightweight-charts';
 import BitcoinService from '../services/BitcoinService';
 import EventsService from '../services/EventsService';
+import AstroService from '../services/AstroService';
 import { subscribeToPriceUpdates } from '../utils/mockDataGenerator';
 
 /**
@@ -156,12 +157,24 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
             
             console.log(`Получаем лунные фазы для диапазона: ${startDate.toISOString()} - ${endDate.toISOString()}`);
             
-            // Используем EventsService для получения лунных фаз с сервера
-            const lunarPhases = await EventsService.getEventsForChart(timeframe, startDate, endDate);
-            console.log('Получено лунных фаз:', lunarPhases.length, lunarPhases);
+            // Получаем лунные события за указанный период через сервис событий
+            const lunarEvents = await EventsService.getLunarEvents(startDate, endDate);
+            console.log('Получено лунных событий:', lunarEvents.length, lunarEvents);
             
-            // Сортируем данные по времени в порядке возрастания
-            lunarPhases.sort((a, b) => new Date(a.date) - new Date(b.date));
+            // Нормализуем формат событий
+            const normalizedEvents = lunarEvents.map(event => {
+              // Если событие уже в правильном формате, оставляем как есть
+              if (event.time) return event;
+              
+              // Иначе преобразуем в нужный формат
+              return {
+                time: new Date(event.date).getTime() / 1000,
+                type: event.type,
+                title: event.title || event.phaseName,
+                icon: event.icon,
+                phaseName: event.phaseName || event.title
+              };
+            });
             
             // Сохраняем данные для отладки
             if (typeof window !== 'undefined') {
@@ -169,12 +182,12 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
                 timeframe,
                 startDate: startDate.toISOString(),
                 endDate: endDate.toISOString(),
-                lunarPhases,
-                sortedLunarPhases: [...lunarPhases].sort((a, b) => new Date(a.date) - new Date(b.date))
+                lunarPhases: normalizedEvents,
+                sortedLunarPhases: [...normalizedEvents].sort((a, b) => a.time - b.time)
               };
             }
             
-            setLunarEvents(lunarPhases);
+            setLunarEvents(normalizedEvents);
           } catch (err) {
             console.error('Ошибка при загрузке лунных фаз:', err);
           }
@@ -257,57 +270,49 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
       chartRef.current = chart;
       candlestickSeriesRef.current = candlestickSeries;
       
-      // Готовим маркеры для лунных фаз
-      const lunarMarkers = [];
-      const economicMarkers = [];
-      const astroMarkers = [];
-      
-      if (lunarEvents.length > 0) {
-        console.log('Добавляем маркеры лунных фаз:', lunarEvents.length);
-        
-        // Убедимся, что массив отсортирован по времени
-        const sortedLunarEvents = [...lunarEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
-        
-        sortedLunarEvents.forEach(phase => {
-          const phaseDate = new Date(phase.date);
-          const phaseTime = Math.floor(phaseDate.getTime() / 1000);
-          const price = getApproximatePriceForDate(phaseDate, chartData);
-          
-          if (price) {
-            // Определяем тип и стиль маркера
-            const isNewMoon = phase.type === 'new_moon';
-            const marker = {
-              time: phaseTime,
-              position: isNewMoon ? 'belowBar' : 'aboveBar',
-              color: isNewMoon ? '#2962FF' : '#FFD600',
-              shape: 'circle',
-              text: isNewMoon ? 'Новолуние' : 'Полнолуние',
-              size: 2
+      // Добавляем маркеры для лунных фаз
+      if (lunarEvents && lunarEvents.length > 0) {
+        try {
+          // Создаем маркеры для лунных фаз
+          const lunarMarkers = lunarEvents.map((event) => {
+            // Определяем цвет маркера в зависимости от типа события
+            const markerColor = event.type === 'new_moon' 
+              ? isDarkMode ? '#64748b' : '#334155' 
+              : isDarkMode ? '#f1f5f9' : '#94a3b8';
+              
+            const price = getApproximatePriceForDate(new Date(event.time * 1000), chartData);
+            
+            return {
+              time: event.time,
+              position: 'aboveBar',
+              shape: 'text',
+              text: event.icon || (event.type === 'new_moon' ? '🌑' : '🌕'),
+              size: 1,
+              price: price * 1.01
             };
-            
-            lunarMarkers.push(marker);
-            
-            // Создаем отдельную серию для текста
-            const textSeries = chart.addLineSeries({
-              lineVisible: false,
-              lastValueVisible: false,
-              priceLineVisible: false,
-            });
-            
-            textSeries.setData([
-              { time: phaseTime, value: isNewMoon ? price * 0.98 : price * 1.02 }
-            ]);
-            
-            textSeries.setMarkers([{
-              time: phaseTime,
-              position: isNewMoon ? 'belowBar' : 'aboveBar',
-              shape: 'arrowDown',
-              color: isNewMoon ? '#2962FF' : '#FFD600',
-              text: isNewMoon ? '🌑 Новолуние' : '🌕 Полнолуние',
-              size: 2,
-            }]);
+          });
+          
+          // Проверяем, отсортированы ли маркеры по времени
+          const isSorted = lunarMarkers.every((marker, i, arr) => 
+            i === 0 || arr[i-1].time <= marker.time
+          );
+          
+          if (!isSorted) {
+            console.log('Маркеры не отсортированы, сортируем по времени');
+            lunarMarkers.sort((a, b) => a.time - b.time);
+          } else {
+            console.log('Маркеры уже отсортированы по времени');
           }
-        });
+          
+          console.log('Добавляем маркеры лунных фаз на график:', lunarMarkers);
+          
+          // Добавляем маркеры на график
+          candlestickSeriesRef.current.setMarkers(lunarMarkers);
+        } catch (err) {
+          console.error('Ошибка при добавлении маркеров лунных фаз:', err);
+        }
+      } else {
+        console.log('Нет данных о лунных фазах для отображения на графике');
       }
       
       // Добавляем остальные события
@@ -383,70 +388,13 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
               
               // Распределяем маркеры по соответствующим массивам
               if (isAstroEvent) {
-                astroMarkers.push(marker);
+                candlestickSeriesRef.current.setMarkers([marker]);
               } else if (isEconomicEvent) {
-                economicMarkers.push(marker);
+                candlestickSeriesRef.current.setMarkers([marker]);
               }
-              
-              // Создаем отдельную серию для текста
-              const textSeries = chart.addLineSeries({
-                lineVisible: false,
-                lastValueVisible: false,
-                priceLineVisible: false,
-              });
-              
-              textSeries.setData([
-                { time: eventTime, value: price * priceOffset }
-              ]);
-              
-              textSeries.setMarkers([{
-                time: eventTime,
-                position: position,
-                shape: 'arrowDown',
-                color,
-                text: `${event.icon || ''} ${event.title}`,
-                size: 2,
-              }]);
             }
           }
         });
-      }
-      
-      // Создаем серии для разных типов маркеров
-      if (lunarMarkers.length > 0) {
-        const moonSeries = chart.addLineSeries({
-          lineVisible: false,
-          lastValueVisible: false,
-          priceLineVisible: false,
-        });
-        
-        lunarMarkers.sort((a, b) => a.time - b.time); // Сортировка по времени
-        console.log('Устанавливаем маркеры лунных фаз на график:', lunarMarkers.length);
-        moonSeries.setMarkers(lunarMarkers);
-      }
-      
-      if (astroMarkers.length > 0) {
-        const astroSeries = chart.addLineSeries({
-          lineVisible: false,
-          lastValueVisible: false,
-          priceLineVisible: false,
-        });
-        
-        astroMarkers.sort((a, b) => a.time - b.time); // Сортировка по времени
-        console.log('Устанавливаем астрономические маркеры на график:', astroMarkers.length);
-        astroSeries.setMarkers(astroMarkers);
-      }
-      
-      if (economicMarkers.length > 0) {
-        const economicSeries = chart.addLineSeries({
-          lineVisible: false,
-          lastValueVisible: false,
-          priceLineVisible: false,
-        });
-        
-        economicMarkers.sort((a, b) => a.time - b.time); // Сортировка по времени
-        console.log('Устанавливаем экономические маркеры на график:', economicMarkers.length);
-        economicSeries.setMarkers(economicMarkers);
       }
       
       chart.timeScale().fitContent();
