@@ -48,7 +48,7 @@ const cacheDir = path.join(rootDir, 'src/data/cache');
 const config = {
   // Настройки сервера
   server: {
-    port: process.env.PORT || 3001,
+    port: process.env.PORT || 3002,
     env: process.env.NODE_ENV || 'development',
   },
 

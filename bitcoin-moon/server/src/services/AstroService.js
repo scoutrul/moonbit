@@ -1,3 +1,5 @@
+import { moonphase } from 'astronomia';
+import { julian } from 'astronomia';
 import logger from '../utils/logger.js';
 import astroRepository from '../repositories/AstroRepository.js';
 
@@ -486,6 +488,314 @@ class AstroService {
     });
     
     return events;
+  }
+
+  /**
+   * Рассчитывает ближайшее новолуние до указанной даты
+   * @param {Date} date - Дата для расчета
+   * @returns {Date} Дата ближайшего предыдущего новолуния
+   */
+  getNewMoonBefore(date) {
+    try {
+      // Преобразуем дату в формат юлианского дня
+      const jd = julian.DateToJDE(date);
+      
+      // Рассчитываем ближайшее новолуние до указанной даты
+      const newMoonJD = moonphase.newMoon(jd);
+      
+      // Преобразуем обратно в JavaScript Date
+      return julian.JDEToDate(newMoonJD);
+    } catch (error) {
+      logger.error('Error calculating new moon before date:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Рассчитывает ближайшее полнолуние до указанной даты
+   * @param {Date} date - Дата для расчета
+   * @returns {Date} Дата ближайшего предыдущего полнолуния
+   */
+  getFullMoonBefore(date) {
+    try {
+      // Преобразуем дату в формат юлианского дня
+      const jd = julian.DateToJDE(date);
+      
+      // Рассчитываем ближайшее полнолуние до указанной даты
+      const fullMoonJD = moonphase.full(jd);
+      
+      // Преобразуем обратно в JavaScript Date
+      return julian.JDEToDate(fullMoonJD);
+    } catch (error) {
+      logger.error('Error calculating full moon before date:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Рассчитывает ближайшее новолуние после указанной даты
+   * @param {Date} date - Дата для расчета
+   * @returns {Date} Дата ближайшего следующего новолуния
+   */
+  getNewMoonAfter(date) {
+    try {
+      // Преобразуем дату в формат юлианского дня
+      const jd = julian.DateToJDE(date);
+      
+      // Добавляем небольшое смещение, чтобы точно найти следующее новолуние
+      const newMoonJD = moonphase.newMoon(jd + 1);
+      
+      // Преобразуем обратно в JavaScript Date
+      return julian.JDEToDate(newMoonJD);
+    } catch (error) {
+      logger.error('Error calculating new moon after date:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Рассчитывает ближайшее полнолуние после указанной даты
+   * @param {Date} date - Дата для расчета
+   * @returns {Date} Дата ближайшего следующего полнолуния
+   */
+  getFullMoonAfter(date) {
+    try {
+      // Преобразуем дату в формат юлианского дня
+      const jd = julian.DateToJDE(date);
+      
+      // Добавляем небольшое смещение, чтобы точно найти следующее полнолуние
+      const fullMoonJD = moonphase.full(jd + 1);
+      
+      // Преобразуем обратно в JavaScript Date
+      return julian.JDEToDate(fullMoonJD);
+    } catch (error) {
+      logger.error('Error calculating full moon after date:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Получает все лунные события (новолуния и полнолуния) в заданном периоде
+   * @param {Date} startDate - Начальная дата
+   * @param {Date} endDate - Конечная дата
+   * @returns {Array} Массив объектов с датами и типами лунных событий
+   */
+  getLunarEventsInPeriod(startDate, endDate) {
+    try {
+      logger.debug(`AstroService: получение лунных событий в периоде от ${startDate.toISOString()} до ${endDate.toISOString()}`);
+      
+      const events = [];
+      let currentDate = new Date(startDate);
+      
+      // Получаем ближайшее новолуние после начальной даты
+      let nextNewMoon = this.getNewMoonAfter(currentDate);
+      
+      // Генерируем события до конечной даты
+      while (nextNewMoon <= endDate) {
+        // Добавляем новолуние
+        events.push({
+          date: nextNewMoon.toISOString(),
+          type: 'new_moon',
+          title: 'Новолуние',
+          phaseName: 'Новолуние',
+          icon: '🌑'
+        });
+        
+        // Получаем следующее полнолуние
+        const nextFullMoon = this.getFullMoonAfter(nextNewMoon);
+        
+        // Добавляем полнолуние, если оно в пределах периода
+        if (nextFullMoon <= endDate) {
+          events.push({
+            date: nextFullMoon.toISOString(),
+            type: 'full_moon',
+            title: 'Полнолуние',
+            phaseName: 'Полнолуние',
+            icon: '🌕'
+          });
+        }
+        
+        // Получаем следующее новолуние и продолжаем цикл
+        nextNewMoon = this.getNewMoonAfter(nextNewMoon);
+      }
+      
+      logger.debug(`AstroService: найдено ${events.length} лунных событий в периоде`);
+      
+      // Сортируем события по дате
+      return events.sort((a, b) => new Date(a.date) - new Date(b.date));
+    } catch (error) {
+      logger.error('Error calculating lunar events in period:', error);
+      
+      // В случае ошибки возвращаем мок-данные
+      return this._generateMockLunarEvents(startDate, endDate);
+    }
+  }
+  
+  /**
+   * Генерирует мок-данные о лунных событиях в случае ошибки расчетов
+   * @param {Date} startDate - Начальная дата
+   * @param {Date} endDate - Конечная дата
+   * @returns {Array} Массив объектов с датами и типами лунных событий
+   * @private
+   */
+  _generateMockLunarEvents(startDate, endDate) {
+    const events = [];
+    let currentDate = new Date(startDate);
+    
+    // Примерно 29.5 дней в лунном цикле
+    const lunarCycleDays = 29.5;
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
+    const lunarCycleMs = lunarCycleDays * millisecondsPerDay;
+    
+    // Если мы начинаем не с новолуния, находим ближайшее новолуние
+    // Предполагаем, что 2022-01-02 было новолуние
+    const knownNewMoon = new Date('2022-01-02T18:33:00Z');
+    const msSinceKnownNewMoon = currentDate.getTime() - knownNewMoon.getTime();
+    const cyclesSinceKnown = msSinceKnownNewMoon / lunarCycleMs;
+    const cycleOffset = cyclesSinceKnown - Math.floor(cyclesSinceKnown);
+    
+    // Корректируем начальную дату, чтобы найти ближайшее новолуние
+    if (cycleOffset > 0) {
+      const msToNextNewMoon = (1 - cycleOffset) * lunarCycleMs;
+      currentDate = new Date(currentDate.getTime() + msToNextNewMoon);
+    }
+    
+    // Генерируем события до конечной даты
+    while (currentDate <= endDate) {
+      // Добавляем новолуние
+      events.push({
+        date: new Date(currentDate).toISOString(),
+        type: 'new_moon',
+        title: 'Новолуние',
+        phaseName: 'Новолуние',
+        icon: '🌑'
+      });
+      
+      // Добавляем полнолуние (примерно через 14.75 дней после новолуния)
+      const fullMoonDate = new Date(currentDate.getTime() + lunarCycleMs / 2);
+      if (fullMoonDate <= endDate) {
+        events.push({
+          date: fullMoonDate.toISOString(),
+          type: 'full_moon',
+          title: 'Полнолуние',
+          phaseName: 'Полнолуние',
+          icon: '🌕'
+        });
+      }
+      
+      // Переходим к следующему циклу
+      currentDate = new Date(currentDate.getTime() + lunarCycleMs);
+    }
+    
+    // Сортируем события по дате
+    return events.sort((a, b) => new Date(a.date) - new Date(b.date));
+  }
+
+  /**
+   * Рассчитывает текущую фазу Луны (значение от 0 до 1)
+   * @param {Date} date - Дата для расчета фазы Луны
+   * @returns {number} Фаза Луны от 0 до 1 (0 = новолуние, 0.5 = полнолуние, 1 = снова новолуние)
+   */
+  getMoonPhase(date = new Date()) {
+    try {
+      // Находим ближайшее предыдущее новолуние
+      const prevNewMoon = this.getNewMoonBefore(date);
+      
+      // Находим следующее новолуние
+      const nextNewMoon = this.getNewMoonAfter(prevNewMoon);
+      
+      // Рассчитываем лунный возраст как долю от лунного цикла
+      const ageInMilliseconds = date.getTime() - prevNewMoon.getTime();
+      const cycleInMilliseconds = nextNewMoon.getTime() - prevNewMoon.getTime();
+      
+      // Возвращаем фазу как число от 0 до 1
+      return ageInMilliseconds / cycleInMilliseconds;
+    } catch (error) {
+      logger.error('Error calculating moon phase:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Получает информацию о текущей фазе Луны
+   * @param {Date} date - Дата для расчета фазы Луны
+   * @returns {Object} Информация о текущей фазе Луны
+   */
+  getCurrentMoonPhaseInfo(date = new Date()) {
+    try {
+      // Получаем фазу Луны от 0 до 1
+      const phase = this.getMoonPhase(date);
+      
+      // Определяем название фазы и иконку
+      let phaseName, icon;
+      
+      if (phase < 0.025 || phase >= 0.975) {
+        phaseName = 'Новолуние';
+        icon = '🌑';
+      } else if (phase < 0.225) {
+        phaseName = 'Растущий серп';
+        icon = '🌒';
+      } else if (phase < 0.275) {
+        phaseName = 'Первая четверть';
+        icon = '🌓';
+      } else if (phase < 0.475) {
+        phaseName = 'Растущая луна';
+        icon = '🌔';
+      } else if (phase < 0.525) {
+        phaseName = 'Полнолуние';
+        icon = '🌕';
+      } else if (phase < 0.725) {
+        phaseName = 'Убывающая луна';
+        icon = '🌖';
+      } else if (phase < 0.775) {
+        phaseName = 'Последняя четверть';
+        icon = '🌗';
+      } else {
+        phaseName = 'Убывающий серп';
+        icon = '🌘';
+      }
+      
+      // Определяем ближайшие значимые фазы
+      const prevNewMoon = this.getNewMoonBefore(date);
+      const nextNewMoon = this.getNewMoonAfter(date);
+      const prevFullMoon = this.getFullMoonBefore(date);
+      const nextFullMoon = this.getFullMoonAfter(date);
+      
+      // Формируем информацию о следующей значимой фазе
+      let nextPhaseTime, nextPhaseName;
+      
+      if (phase < 0.5) {
+        // Ближайшая следующая фаза - полнолуние
+        nextPhaseTime = Math.floor(nextFullMoon.getTime() / 1000);
+        nextPhaseName = 'Полнолуние';
+      } else {
+        // Ближайшая следующая фаза - новолуние
+        nextPhaseTime = Math.floor(nextNewMoon.getTime() / 1000);
+        nextPhaseName = 'Новолуние';
+      }
+      
+      // Возвращаем полную информацию
+      return {
+        phase: phase,
+        phaseName: phaseName,
+        icon: icon,
+        date: date.toISOString(),
+        prevNewMoon: prevNewMoon.toISOString(),
+        nextNewMoon: nextNewMoon.toISOString(),
+        prevFullMoon: prevFullMoon.toISOString(),
+        nextFullMoon: nextFullMoon.toISOString(),
+        nextPhaseTime: nextPhaseTime,
+        nextPhaseName: nextPhaseName
+      };
+    } catch (error) {
+      logger.error('Error getting current moon phase info:', error);
+      return {
+        phase: 0,
+        phaseName: 'Неизвестно',
+        icon: '❓',
+        date: date.toISOString()
+      };
+    }
   }
 }
 

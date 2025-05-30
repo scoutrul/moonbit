@@ -96,6 +96,35 @@ class BitcoinController {
       next(error);
     }
   }
+
+  /**
+   * Получает данные для свечного графика
+   * @param {Object} req - Express request
+   * @param {Object} res - Express response
+   * @param {Function} next - Express next
+   */
+  getCandlestickData(req, res, next) {
+    try {
+      const { timeframe = '1d' } = req.query;
+      
+      // Проверяем, что таймфрейм валидный
+      const validTimeframes = ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w'];
+      if (!validTimeframes.includes(timeframe)) {
+        return res.status(400).json({
+          message: 'Недопустимый таймфрейм. Доступные значения: ' + validTimeframes.join(', ')
+        });
+      }
+      
+      const candlestickData = bitcoinService.getCandlestickData(timeframe);
+      res.json(candlestickData);
+    } catch (error) {
+      logger.error('Ошибка при получении данных свечного графика', {
+        error: error.message,
+        timeframe: req.query.timeframe
+      });
+      next(error);
+    }
+  }
 }
 
 const bitcoinController = new BitcoinController();

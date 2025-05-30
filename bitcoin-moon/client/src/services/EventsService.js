@@ -121,15 +121,11 @@ class EventsService {
       const start = startDate.toISOString();
       const end = endDate.toISOString();
       
-      const response = await fetch(`${this.apiBaseUrl}/astro/events?startDate=${start}&endDate=${end}`);
+      const response = await api.get('/astro/events', {
+        params: { startDate: start, endDate: end }
+      });
       
-      if (!response.ok) {
-        console.error('Ошибка при получении астрономических событий:', response.status);
-        return [];
-      }
-      
-      const data = await response.json();
-      return data.success ? data.data : [];
+      return response.data || [];
     } catch (error) {
       console.error('Ошибка при получении астрономических событий:', error);
       return [];
@@ -142,15 +138,9 @@ class EventsService {
    */
   async getCurrentMoonPhase() {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/astro/moon-phase`);
+      const response = await api.get('/moon/current');
       
-      if (!response.ok) {
-        console.error('Ошибка при получении фазы луны:', response.status);
-        return null;
-      }
-      
-      const data = await response.json();
-      return data.success ? data.data : null;
+      return response.data || null;
     } catch (error) {
       console.error('Ошибка при получении фазы луны:', error);
       return null;
@@ -199,29 +189,34 @@ class EventsService {
         }
       }
       
-      // Запрашиваем лунные события
-      const lunarEvents = await this.getLunarEvents(startDate, endDate);
+      console.log(`EventsService: Получение событий для графика в диапазоне ${startDate.toISOString()} - ${endDate.toISOString()}`);
       
-      // Запрашиваем экономические события
-      const economicEvents = await this.getEconomicEvents();
+      // Запрашиваем все типы событий параллельно для повышения производительности
+      const [lunarEvents, economicEvents] = await Promise.all([
+        this.getLunarEvents(startDate, endDate),
+        this.getEconomicEvents(10) // Ограничиваем количество экономических событий
+      ]);
       
-      // Запрашиваем астрономические события
-      const astroEvents = await this.getAstroEvents(startDate, endDate);
+      console.log(`EventsService: Получено лунных событий: ${lunarEvents.length}, экономических: ${economicEvents.length}`);
       
       // Объединяем все события
       const allEvents = [
         ...lunarEvents,
-        ...economicEvents,
-        ...astroEvents
+        ...economicEvents
       ];
       
       // Если не удалось получить реальные данные, возвращаем мок-данные
       if (allEvents.length === 0) {
+        console.warn('EventsService: Не удалось получить события, используем мок-данные');
         return this._getMockEventsForChart(timeframe, startDate, endDate);
       }
       
       // Сортируем по дате
-      return allEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+      return allEvents.sort((a, b) => {
+        const dateA = new Date(a.date || a.time * 1000);
+        const dateB = new Date(b.date || b.time * 1000);
+        return dateA - dateB;
+      });
     } catch (error) {
       console.error('Ошибка при получении событий для графика:', error);
       
@@ -305,7 +300,7 @@ class EventsService {
       const response = await api.get('/economic/upcoming', {
         params: { limit }
       });
-      return response.data;
+      return response.data || [];
     } catch (error) {
       console.error('Ошибка при получении экономических событий:', error);
       return [];
@@ -353,19 +348,70 @@ class EventsService {
       const start = startDate.toISOString();
       const end = endDate.toISOString();
       
-      const response = await fetch(`${this.apiBaseUrl}/moon/historical-events?startDate=${start}&endDate=${end}`);
+      const response = await api.get('/moon/historical-events', {
+        params: { startDate: start, endDate: end }
+      });
       
-      if (!response.ok) {
-        console.error('Ошибка при получении лунных событий:', response.status);
-        return [];
+      // Если получены пустые данные, возвращаем мок-данные
+      if (!response.data || response.data.length === 0) {
+        console.warn('EventsService: получены пустые данные от API, используем мок-данные');
+        return this._getMockLunarEvents(startDate, endDate);
       }
       
-      const data = await response.json();
-      return data.success ? data.data : [];
+      return response.data;
     } catch (error) {
       console.error('Ошибка при получении лунных событий:', error);
-      return [];
+      // В случае ошибки генерируем мок-данные
+      return this._getMockLunarEvents(startDate, endDate);
     }
+  }
+  
+  /**
+   * Генерирует мок-данные лунных событий для указанного периода
+   * @param {Date} startDate - начальная дата
+   * @param {Date} endDate - конечная дата
+   * @returns {Array} - массив лунных событий
+   * @private
+   */
+  _getMockLunarEvents(startDate, endDate) {
+    const events = [];
+    
+    // Генерируем новолуния и полнолуния
+    let currentDate = new Date(startDate);
+    const lunarCycle = 29.5 * 24 * 60 * 60 * 1000; // ~29.5 дней в миллисекундах
+    const halfLunarCycle = lunarCycle / 2;
+    
+    // Начнем с новолуния
+    while (currentDate <= endDate) {
+      // Новолуние
+      events.push({
+        date: new Date(currentDate).toISOString(),
+        type: 'new_moon',
+        phase: 0,
+        phaseName: 'Новолуние',
+        title: 'Новолуние',
+        icon: '🌑'
+      });
+      
+      // Полнолуние (через ~14.75 дней после новолуния)
+      const fullMoonDate = new Date(currentDate.getTime() + halfLunarCycle);
+      if (fullMoonDate <= endDate) {
+        events.push({
+          date: fullMoonDate.toISOString(),
+          type: 'full_moon',
+          phase: 0.5,
+          phaseName: 'Полнолуние',
+          title: 'Полнолуние',
+          icon: '🌕'
+        });
+      }
+      
+      // Переходим к следующему циклу
+      currentDate = new Date(currentDate.getTime() + lunarCycle);
+    }
+    
+    // Сортируем события по дате
+    return events.sort((a, b) => new Date(a.date) - new Date(b.date));
   }
 
   /**

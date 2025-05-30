@@ -194,6 +194,67 @@ class BitcoinService {
       maxFluctuation: Math.round(maxFluctuation * 100) / 100,
     };
   }
+
+  /**
+   * Получает данные для свечного графика
+   * @param {string} timeframe - Временной интервал (1m, 5m, 15m, 30m, 1h, 4h, 1d, 1w)
+   * @returns {Array} Массив данных для свечного графика
+   */
+  getCandlestickData(timeframe = '1d') {
+    logger.debug(`BitcoinService: запрос данных свечного графика, таймфрейм: ${timeframe}`);
+    
+    // Временно реализуем мок-данные для свечного графика
+    // В реальном приложении здесь должно быть обращение к репозиторию
+    // для получения данных из БД или внешнего API
+    
+    const now = new Date();
+    const data = [];
+    const basePrice = 50000; // Базовая цена
+    let price = basePrice;
+    let intervalInMs;
+    
+    // Определяем интервал времени в миллисекундах
+    switch(timeframe) {
+      case '1m': intervalInMs = 60 * 1000; break;
+      case '5m': intervalInMs = 5 * 60 * 1000; break;
+      case '15m': intervalInMs = 15 * 60 * 1000; break;
+      case '30m': intervalInMs = 30 * 60 * 1000; break;
+      case '1h': intervalInMs = 60 * 60 * 1000; break;
+      case '4h': intervalInMs = 4 * 60 * 60 * 1000; break;
+      case '1d': intervalInMs = 24 * 60 * 60 * 1000; break;
+      case '1w': intervalInMs = 7 * 24 * 60 * 60 * 1000; break;
+      default: intervalInMs = 24 * 60 * 60 * 1000;
+    }
+    
+    // Генерируем 100 свечей для выбранного таймфрейма
+    for (let i = 100; i >= 0; i--) {
+      const timestamp = now.getTime() - i * intervalInMs;
+      const volatility = price * 0.02; // 2% волатильность
+      
+      // Моделируем некоторый тренд в данных
+      const trend = Math.sin(i / 10) * volatility * 0.5;
+      
+      const open = price + (Math.random() - 0.5) * volatility + trend;
+      const close = open + (Math.random() - 0.5) * volatility + trend;
+      const high = Math.max(open, close) + Math.random() * volatility * 0.5;
+      const low = Math.min(open, close) - Math.random() * volatility * 0.5;
+      const volume = Math.round(1000 + Math.random() * 9000);
+      
+      data.push({
+        time: Math.floor(timestamp / 1000),
+        open,
+        high,
+        low,
+        close,
+        volume
+      });
+      
+      // Обновляем базовую цену для следующей свечи
+      price = close;
+    }
+    
+    return data;
+  }
 }
 
 const bitcoinService = new BitcoinService();

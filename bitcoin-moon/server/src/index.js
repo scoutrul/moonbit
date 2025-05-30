@@ -18,6 +18,7 @@ const __dirname = path.dirname(__filename);
 
 try {
   logger.info('Запуск сервера');
+  logger.info(`Режим: ${config.server.env}`);
   logger.info('Создание express app');
   const app = express();
 
@@ -43,19 +44,53 @@ try {
   app.get('/api/docs', (req, res) => {
     res.sendFile(path.join(__dirname, '../docs/api.html'));
   });
-
-  // Отдача статичных файлов в production
-  if (config.server.env === 'production') {
-    logger.info('Настройка статичных файлов для production');
-    app.use(express.static(path.join(__dirname, '../../client/dist')));
-
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
+  
+  // Middleware для API-запросов, если маршрут не найден
+  app.use('/api', (req, res, next) => {
+    logger.warn('Запрос к несуществующему API маршруту', {
+      url: req.originalUrl,
+      method: req.method,
     });
-  }
+    
+    res.status(404).json({
+      message: 'API маршрут не найден',
+      status: 404,
+    });
+  });
 
-  // Обработка несуществующих маршрутов
-  app.use(notFoundHandler);
+  // Обработка статических файлов только в production
+  const isProduction = config.server.env === 'production';
+  
+  if (isProduction) {
+    logger.info('Настройка статичных файлов для production');
+    
+    const clientDistPath = path.join(__dirname, '../../client/dist');
+    const clientIndexPath = path.join(clientDistPath, 'index.html');
+    
+    // Проверяем существование директории и файла
+    const fs = await import('fs');
+    if (fs.existsSync(clientDistPath) && fs.existsSync(clientIndexPath)) {
+      app.use(express.static(clientDistPath));
+      
+      // Все остальные запросы (не API) отправляем на клиентское приложение
+      app.get('*', (req, res) => {
+        res.sendFile(clientIndexPath);
+      });
+      
+      logger.info('Статические файлы клиента настроены успешно');
+    } else {
+      logger.warn('Директория клиента не найдена:', clientDistPath);
+      logger.warn('Режим production активен, но статические файлы не доступны');
+      
+      // Если статические файлы не найдены, обрабатываем 404 для всех оставшихся маршрутов
+      app.use(notFoundHandler);
+    }
+  } else {
+    logger.info('Режим разработки: статические файлы клиента не используются');
+    
+    // В режиме разработки обрабатываем 404 для всех оставшихся маршрутов
+    app.use(notFoundHandler);
+  }
 
   // Обработка ошибок
   app.use(errorHandler);

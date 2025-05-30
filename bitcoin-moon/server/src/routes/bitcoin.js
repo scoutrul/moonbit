@@ -40,4 +40,12 @@ router.get('/trend', validate(schemas.bitcoinPriceRequest), bitcoinController.ge
  */
 router.get('/volatility', validate(schemas.bitcoinPriceRequest), bitcoinController.getVolatility);
 
+/**
+ * @route GET /api/bitcoin/candles
+ * @desc Получает данные для свечного графика
+ * @access Public
+ * @query {string} timeframe - Временной интервал (1m, 5m, 15m, 30m, 1h, 4h, 1d, 1w)
+ */
+router.get('/candles', bitcoinController.getCandlestickData);
+
 export default router;

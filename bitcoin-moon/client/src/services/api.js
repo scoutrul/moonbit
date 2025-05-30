@@ -3,47 +3,45 @@
  */
 import axios from 'axios';
 
-// Создаем экземпляр axios с базовыми настройками
+// Определяем базовый URL для API
+const baseURL = '/api'; // Всегда используем относительный путь
+
+// Создаем экземпляр axios с базовой конфигурацией
 const api = axios.create({
-  baseURL: '/api',
-  timeout: 10000,
+  baseURL,
+  timeout: 10000, // 10 секунд таймаут
   headers: {
     'Content-Type': 'application/json',
-  },
+    'Accept': 'application/json'
+  }
 });
 
-// Добавляем перехватчик для запросов
-api.interceptors.request.use(
-  (config) => {
-    // Здесь можно добавить авторизационные заголовки и т.д.
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
+// Перехватчик запросов для логирования и трансформации данных
+api.interceptors.request.use(config => {
+  console.debug(`API Request: ${config.method.toUpperCase()} ${config.url}`, config.params);
+  return config;
+}, error => {
+  console.error('API Request Error:', error);
+  return Promise.reject(error);
+});
 
-// Добавляем перехватчик для ответов
-api.interceptors.response.use(
-  (response) => {
-    // Обрабатываем успешный ответ
-    return response;
-  },
-  (error) => {
-    // Обрабатываем ошибки ответа
-    if (error.response) {
-      // Серверная ошибка с ответом
-      console.error('API error:', error.response.status, error.response.data);
-    } else if (error.request) {
-      // Ошибка запроса (нет ответа)
-      console.error('API request error:', error.request);
-    } else {
-      // Ошибка при настройке запроса
-      console.error('API setup error:', error.message);
-    }
-    
-    return Promise.reject(error);
+// Перехватчик ответов для логирования и обработки ошибок
+api.interceptors.response.use(response => {
+  console.debug(`API Response: ${response.status} ${response.config.url}`);
+  return response;
+}, error => {
+  if (error.response) {
+    console.error('API Error:', error.response.status, error.response.data);
+  } else if (error.request) {
+    console.error('API Error: No response received', error.request);
+  } else {
+    console.error('API Error:', error.message);
   }
-);
+  
+  // Можно добавить глобальную обработку ошибок
+  // Например, показывать уведомление пользователю
+  
+  return Promise.reject(error);
+});
 
 export default api;

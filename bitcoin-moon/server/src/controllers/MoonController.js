@@ -1,133 +1,219 @@
-import moonService from '../services/MoonService.js';
 import logger from '../utils/logger.js';
-import { validateResponse, schemas } from '../utils/validators.js';
+import AstroService from '../services/AstroService.js';
 
 /**
- * Контроллер для работы с данными о фазах луны
+ * Контроллер для работы с данными о Луне
  */
-class MoonController {
+const moonController = {
   /**
-   * Получает текущую фазу луны
-   * @param {Object} req - Express request
-   * @param {Object} res - Express response
-   * @param {Function} next - Express next
+   * Получает текущую фазу Луны
+   * @param {Object} req - HTTP запрос
+   * @param {Object} res - HTTP ответ
    */
-  getCurrentPhase(req, res, next) {
+  getCurrentPhase: async (req, res) => {
     try {
-      const phaseData = moonService.getCurrentPhase();
+      const phaseInfo = AstroService.getCurrentMoonPhaseInfo();
       
-      // Валидируем ответ
-      const validatedData = validateResponse(schemas.moonPhaseResponse, phaseData);
-      
-      res.json(validatedData);
+      res.status(200).json({
+        phase: phaseInfo.phase,
+        phaseName: phaseInfo.phaseName,
+        icon: phaseInfo.icon,
+        nextPhaseTime: phaseInfo.nextPhaseTime,
+        nextPhaseName: phaseInfo.nextPhaseName
+      });
     } catch (error) {
-      logger.error('Ошибка при получении текущей фазы луны', { error: error.message });
-      next(error);
+      logger.error('Error in getCurrentPhase:', error);
+      res.status(500).json({ error: 'Ошибка при получении текущей фазы Луны' });
     }
-  }
+  },
 
   /**
-   * Получает фазы луны для указанного периода
-   * @param {Object} req - Express request
-   * @param {Object} res - Express response
-   * @param {Function} next - Express next
+   * Получает фазы Луны за указанный период
+   * @param {Object} req - HTTP запрос
+   * @param {Object} res - HTTP ответ
    */
-  getPhasesForPeriod(req, res, next) {
+  getPhasesForPeriod: async (req, res) => {
     try {
       const { startDate, endDate } = req.query;
-
-      const phasesData = moonService.getPhasesForPeriod(startDate, endDate);
-      res.json(phasesData);
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: 'Необходимо указать startDate и endDate' });
+      }
+      
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return res.status(400).json({ error: 'Некорректный формат даты' });
+      }
+      
+      const events = AstroService.getLunarEventsInPeriod(start, end);
+      
+      res.status(200).json(events);
     } catch (error) {
-      logger.error('Ошибка при получении фаз луны за период', {
-        error: error.message,
-        startDate: req.query.startDate,
-        endDate: req.query.endDate,
-      });
-      next(error);
+      logger.error('Error in getPhasesForPeriod:', error);
+      res.status(500).json({ error: 'Ошибка при получении фаз Луны за период' });
     }
-  }
+  },
 
   /**
-   * Получает следующие значимые фазы луны
-   * @param {Object} req - Express request
-   * @param {Object} res - Express response
-   * @param {Function} next - Express next
+   * Получает следующие значимые фазы Луны
+   * @param {Object} req - HTTP запрос
+   * @param {Object} res - HTTP ответ
    */
-  getNextSignificantPhases(req, res, next) {
+  getNextSignificantPhases: async (req, res) => {
     try {
-      const { count } = req.query;
-
-      const phasesData = moonService.getNextSignificantPhases(count);
-      res.json(phasesData);
+      const count = parseInt(req.query.count) || 4;
+      const now = new Date();
+      
+      // Получаем ближайшее новолуние и полнолуние после текущей даты
+      const nextNewMoon = AstroService.getNewMoonAfter(now);
+      const nextFullMoon = AstroService.getFullMoonAfter(now);
+      
+      // Создаем массив для хранения следующих фаз
+      const phases = [];
+      
+      // Сначала добавляем ближайшую фазу
+      if (nextNewMoon < nextFullMoon) {
+        phases.push({
+          date: nextNewMoon.toISOString(),
+          type: 'new_moon',
+          phaseName: 'Новолуние',
+          icon: '🌑'
+        });
+        
+        // Добавляем полнолуние
+        phases.push({
+          date: nextFullMoon.toISOString(),
+          type: 'full_moon',
+          phaseName: 'Полнолуние',
+          icon: '🌕'
+        });
+      } else {
+        phases.push({
+          date: nextFullMoon.toISOString(),
+          type: 'full_moon',
+          phaseName: 'Полнолуние',
+          icon: '🌕'
+        });
+        
+        // Добавляем новолуние
+        phases.push({
+          date: nextNewMoon.toISOString(),
+          type: 'new_moon',
+          phaseName: 'Новолуние',
+          icon: '🌑'
+        });
+      }
+      
+      // Добавляем остальные фазы
+      let lastNewMoon = nextNewMoon;
+      let lastFullMoon = nextFullMoon;
+      
+      while (phases.length < count) {
+        // Добавляем следующее новолуние
+        const newMoon = AstroService.getNewMoonAfter(lastNewMoon);
+        phases.push({
+          date: newMoon.toISOString(),
+          type: 'new_moon',
+          phaseName: 'Новолуние',
+          icon: '🌑'
+        });
+        lastNewMoon = newMoon;
+        
+        // Если достигли нужного количества, выходим
+        if (phases.length >= count) break;
+        
+        // Добавляем следующее полнолуние
+        const fullMoon = AstroService.getFullMoonAfter(lastFullMoon);
+        phases.push({
+          date: fullMoon.toISOString(),
+          type: 'full_moon',
+          phaseName: 'Полнолуние',
+          icon: '🌕'
+        });
+        lastFullMoon = fullMoon;
+      }
+      
+      // Сортируем фазы по дате и ограничиваем количество
+      phases.sort((a, b) => new Date(a.date) - new Date(b.date));
+      
+      res.status(200).json(phases.slice(0, count));
     } catch (error) {
-      logger.error('Ошибка при получении следующих значимых фаз луны', {
-        error: error.message,
-        count: req.query.count,
-      });
-      next(error);
+      logger.error('Error in getNextSignificantPhases:', error);
+      res.status(500).json({ error: 'Ошибка при получении следующих значимых фаз Луны' });
     }
-  }
-
-  /**
-   * Получает анализ влияния фаз луны на рынок биткоина
-   * @param {Object} req - Express request
-   * @param {Object} res - Express response
-   * @param {Function} next - Express next
-   */
-  getMoonInfluence(req, res, next) {
-    try {
-      // Можно было бы запросить исторические данные биткоина
-      // и передать их в метод анализа
-      const influenceData = moonService.analyzeMoonInfluence();
-      res.json(influenceData);
-    } catch (error) {
-      logger.error('Ошибка при получении анализа влияния фаз луны', { error: error.message });
-      next(error);
-    }
-  }
+  },
 
   /**
    * Получает предстоящие лунные события
-   * @param {Object} req - Express request
-   * @param {Object} res - Express response
-   * @param {Function} next - Express next
+   * @param {Object} req - HTTP запрос
+   * @param {Object} res - HTTP ответ
    */
-  getUpcomingLunarEvents(req, res, next) {
+  getUpcomingLunarEvents: async (req, res) => {
     try {
-      const { days } = req.query;
-      const eventsData = moonService.getUpcomingLunarEvents(days || 30);
-      res.json(eventsData);
+      const days = parseInt(req.query.days) || 30;
+      const now = new Date();
+      const end = new Date(now);
+      end.setDate(end.getDate() + days);
+      
+      const events = AstroService.getLunarEventsInPeriod(now, end);
+      
+      res.status(200).json(events);
     } catch (error) {
-      logger.error('Ошибка при получении предстоящих лунных событий', {
-        error: error.message,
-        days: req.query.days,
-      });
-      next(error);
+      logger.error('Error in getUpcomingLunarEvents:', error);
+      res.status(500).json({ error: 'Ошибка при получении предстоящих лунных событий' });
     }
-  }
+  },
 
   /**
    * Получает исторические лунные события
-   * @param {Object} req - Express request
-   * @param {Object} res - Express response
-   * @param {Function} next - Express next
+   * @param {Object} req - HTTP запрос
+   * @param {Object} res - HTTP ответ
    */
-  getHistoricalLunarEvents(req, res, next) {
+  getHistoricalLunarEvents: async (req, res) => {
     try {
       const { startDate, endDate } = req.query;
-      const eventsData = moonService.getHistoricalLunarEvents(startDate, endDate);
-      res.json(eventsData);
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: 'Необходимо указать startDate и endDate' });
+      }
+      
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return res.status(400).json({ error: 'Некорректный формат даты' });
+      }
+      
+      const events = AstroService.getLunarEventsInPeriod(start, end);
+      
+      res.status(200).json(events);
     } catch (error) {
-      logger.error('Ошибка при получении исторических лунных событий', {
-        error: error.message,
-        startDate: req.query.startDate,
-        endDate: req.query.endDate,
+      logger.error('Error in getHistoricalLunarEvents:', error);
+      res.status(500).json({ error: 'Ошибка при получении исторических лунных событий' });
+    }
+  },
+
+  /**
+   * Анализирует влияние фаз Луны на рынок биткоина
+   * @param {Object} req - HTTP запрос
+   * @param {Object} res - HTTP ответ
+   */
+  getMoonInfluence: async (req, res) => {
+    try {
+      // Заглушка для анализа влияния лунных фаз
+      // В будущем здесь может быть реальный анализ на основе исторических данных
+      res.status(200).json({
+        influence: 'neutral',
+        description: 'Влияние лунных фаз на рынок биткоина является предметом исследования',
+        disclaimer: 'Данный анализ представлен исключительно в информационных целях и не является инвестиционной рекомендацией'
       });
-      next(error);
+    } catch (error) {
+      logger.error('Error in getMoonInfluence:', error);
+      res.status(500).json({ error: 'Ошибка при анализе влияния фаз Луны' });
     }
   }
-}
+};
 
-const moonController = new MoonController();
 export default moonController;
