@@ -3,6 +3,7 @@ import { createChart } from 'lightweight-charts';
 import BitcoinService from '../services/BitcoinService';
 import EventsService from '../services/EventsService';
 import AstroService from '../services/AstroService';
+import ForecastService from '../services/ForecastService';
 import { subscribeToPriceUpdates } from '../utils/mockDataGenerator';
 
 /**
@@ -14,11 +15,15 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
   const candlestickSeriesRef = useRef(null);
+  const forecastSeriesRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [chartData, setChartData] = useState(data || []);
+  const [forecastData, setForecastData] = useState([]);
+  const [showForecast, setShowForecast] = useState(true);
   const [events, setEvents] = useState([]);
   const [lunarEvents, setLunarEvents] = useState([]);
+  const [futureLunarEvents, setFutureLunarEvents] = useState([]);
   const unsubscribeRef = useRef(null);
   const [isChartFocused, setIsChartFocused] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -138,11 +143,30 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
         setLoading(true);
         setError(null);
 
+        let chartData = [];
+        let forecast = [];
+        let combinedLunarEvents = [];
+
         // Если данные не были переданы извне, загружаем их
         if (!data || data.length === 0) {
-          // Загружаем данные для графика
-          const chartData = await BitcoinService.getCandlestickData(timeframe);
+          // Загружаем расширенные данные (исторические + прогноз)
+          const extendedData = await ForecastService.getExtendedChartData(timeframe, 30);
+          chartData = extendedData.historicalData;
+          forecast = extendedData.forecastData;
           setChartData(chartData);
+          setForecastData(forecast);
+          
+          // Загружаем лунные события для исторического и прогнозного периода
+          if (extendedData.lunarEvents && extendedData.lunarEvents.length > 0) {
+            setFutureLunarEvents(extendedData.lunarEvents);
+            combinedLunarEvents = extendedData.lunarEvents;
+          }
+        } else {
+          chartData = data;
+          // Генерируем прогноз на основе переданных данных
+          forecast = ForecastService.generateForecastData(data, timeframe, 30);
+          setChartData(data);
+          setForecastData(forecast);
         }
         
         // Загружаем события для отображения на графике
@@ -150,7 +174,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
         console.log('Загружено событий:', eventsData.length, eventsData);
         setEvents(eventsData);
         
-        // Получаем данные о лунных фазах
+        // Получаем данные о лунных фазах для исторического периода
         if (chartData && chartData.length > 0) {
           try {
             const startDate = new Date(chartData[0].time * 1000);
@@ -189,6 +213,23 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
             }
             
             setLunarEvents(normalizedEvents);
+            
+            // Объединяем исторические и прогнозные лунные события
+            if (combinedLunarEvents.length > 0) {
+              const normFutureLunarEvents = combinedLunarEvents.map(event => {
+                if (event.time) return event;
+                return {
+                  time: new Date(event.date).getTime() / 1000,
+                  type: event.type,
+                  title: event.title || event.phaseName,
+                  icon: event.icon,
+                  phaseName: event.phaseName || event.title,
+                  isFuture: true
+                };
+              });
+              
+              setLunarEvents([...normalizedEvents, ...normFutureLunarEvents]);
+            }
           } catch (err) {
             console.error('Ошибка при загрузке лунных фаз:', err);
           }
@@ -230,6 +271,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
         chartRef.current.remove();
         chartRef.current = null;
         candlestickSeriesRef.current = null;
+        forecastSeriesRef.current = null;
       }
       
       const theme = isDarkMode ? darkTheme : lightTheme;
@@ -284,6 +326,21 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
       chartRef.current = chart;
       candlestickSeriesRef.current = candlestickSeries;
       
+      // Добавляем серию для прогнозных данных, если они есть
+      if (forecastData && forecastData.length > 0 && showForecast) {
+        const forecastSeries = chart.addCandlestickSeries({
+          upColor: isDarkMode ? 'rgba(38, 166, 154, 0.6)' : 'rgba(76, 175, 80, 0.6)',
+          downColor: isDarkMode ? 'rgba(239, 83, 80, 0.6)' : 'rgba(244, 67, 54, 0.6)',
+          borderVisible: true,
+          borderColor: isDarkMode ? '#64748b' : '#94a3b8',
+          wickUpColor: isDarkMode ? 'rgba(38, 166, 154, 0.6)' : 'rgba(76, 175, 80, 0.6)',
+          wickDownColor: isDarkMode ? 'rgba(239, 83, 80, 0.6)' : 'rgba(244, 67, 54, 0.6)',
+        });
+        
+        forecastSeries.setData(forecastData);
+        forecastSeriesRef.current = forecastSeries;
+      }
+      
       // Добавляем маркеры для лунных фаз
       if (lunarEvents && lunarEvents.length > 0) {
         try {
@@ -294,15 +351,20 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
               ? isDarkMode ? '#64748b' : '#334155' 
               : isDarkMode ? '#f1f5f9' : '#94a3b8';
               
-            const price = getApproximatePriceForDate(new Date(event.time * 1000), chartData);
+            const price = getApproximatePriceForDate(new Date(event.time * 1000), [...chartData, ...forecastData]);
+            
+            // Устанавливаем разный стиль для будущих событий
+            const size = event.isFuture ? 1.2 : 1;
+            const position = 'aboveBar';
             
             return {
               time: event.time,
-              position: 'aboveBar',
+              position: position,
               shape: 'text',
               text: event.icon || (event.type === 'new_moon' ? '🌑' : '🌕'),
-              size: 1,
-              price: price * 1.01
+              size: size,
+              price: price * 1.01,
+              color: event.isFuture ? '#ec4899' : undefined // Выделяем будущие события другим цветом
             };
           });
           
@@ -340,7 +402,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
           if (event.type !== 'new_moon' && event.type !== 'full_moon') { // Пропускаем лунные события, т.к. мы их уже добавили
             const eventDate = new Date(event.date);
             const eventTime = Math.floor(eventDate.getTime() / 1000);
-            const price = getApproximatePriceForDate(eventDate, chartData);
+            const price = getApproximatePriceForDate(eventDate, [...chartData, ...forecastData]);
             
             if (price) {
               // Определяем цвет маркера в зависимости от типа события
@@ -411,6 +473,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
         });
       }
       
+      // Показываем весь график, включая прогнозную часть
       chart.timeScale().fitContent();
       
       // Обработчик изменения размера окна
@@ -509,10 +572,11 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
           chartRef.current.remove();
           chartRef.current = null;
           candlestickSeriesRef.current = null;
+          forecastSeriesRef.current = null;
         }
       };
     }
-  }, [chartData, lunarEvents, events, timeframe, isDarkMode, isChartFocused]);
+  }, [chartData, forecastData, lunarEvents, events, timeframe, isDarkMode, isChartFocused, showForecast]);
 
   // Функция для получения приблизительной цены для даты события
   const getApproximatePriceForDate = (date, candleData) => {
@@ -539,6 +603,11 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
     }
     
     return closestCandle.close;
+  };
+
+  // Переключение отображения прогноза
+  const toggleForecast = () => {
+    setShowForecast(!showForecast);
   };
 
   if (loading && chartData.length === 0) {
@@ -593,23 +662,33 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
         <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
           График Bitcoin с фазами Луны
         </h3>
-        <div className="flex items-center text-xs">
-          <span className="flex items-center mr-3">
-            <span className="w-3 h-3 rounded-full bg-blue-500 mr-1"></span>
-            <span className="text-gray-600 dark:text-gray-300">Новолуние</span>
-          </span>
-          <span className="flex items-center mr-3">
-            <span className="w-3 h-3 rounded-full bg-yellow-400 mr-1"></span>
-            <span className="text-gray-600 dark:text-gray-300">Полнолуние</span>
-          </span>
-          <span className="flex items-center mr-3">
-            <span className="w-3 h-3 rounded-sm bg-pink-500 mr-1"></span>
-            <span className="text-gray-600 dark:text-gray-300">Астро</span>
-          </span>
-          <span className="flex items-center">
-            <span className="w-3 h-3 transform rotate-45 bg-green-500 mr-1"></span>
-            <span className="text-gray-600 dark:text-gray-300">Экономика</span>
-          </span>
+        <div className="flex items-center">
+          <button 
+            onClick={toggleForecast} 
+            className={`mr-4 px-2 py-1 text-xs rounded ${showForecast 
+              ? 'bg-blue-500 text-white' 
+              : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-300'}`}
+          >
+            {showForecast ? 'Скрыть прогноз' : 'Показать прогноз'}
+          </button>
+          <div className="flex items-center text-xs">
+            <span className="flex items-center mr-3">
+              <span className="w-3 h-3 rounded-full bg-blue-500 mr-1"></span>
+              <span className="text-gray-600 dark:text-gray-300">Новолуние</span>
+            </span>
+            <span className="flex items-center mr-3">
+              <span className="w-3 h-3 rounded-full bg-yellow-400 mr-1"></span>
+              <span className="text-gray-600 dark:text-gray-300">Полнолуние</span>
+            </span>
+            <span className="flex items-center mr-3">
+              <span className="w-3 h-3 rounded-sm bg-pink-500 mr-1"></span>
+              <span className="text-gray-600 dark:text-gray-300">Астро</span>
+            </span>
+            <span className="flex items-center">
+              <span className="w-3 h-3 transform rotate-45 bg-green-500 mr-1"></span>
+              <span className="text-gray-600 dark:text-gray-300">Экономика</span>
+            </span>
+          </div>
         </div>
       </div>
       <div 
@@ -621,6 +700,11 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
       />
       <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">
         Для масштабирования кликните на график или используйте Ctrl+колесико мыши
+        {showForecast && (
+          <span className="ml-2 text-blue-500 dark:text-blue-400">
+            • Прозрачная область - прогнозные данные на основе текущего тренда
+          </span>
+        )}
       </div>
     </div>
   );
