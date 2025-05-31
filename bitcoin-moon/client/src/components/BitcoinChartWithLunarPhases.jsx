@@ -158,6 +158,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
           
           // Загружаем лунные события для исторического и прогнозного периода
           if (extendedData.lunarEvents && extendedData.lunarEvents.length > 0) {
+            console.log('Получено лунных событий для прогноза:', extendedData.lunarEvents.length);
             setFutureLunarEvents(extendedData.lunarEvents);
             combinedLunarEvents = extendedData.lunarEvents;
           }
@@ -167,6 +168,15 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
           forecast = ForecastService.generateForecastData(data, timeframe, 30);
           setChartData(data);
           setForecastData(forecast);
+          
+          // Если данные были переданы извне, получаем лунные события для прогнозного периода отдельно
+          if (forecast && forecast.length > 0) {
+            const startDate = new Date(data[data.length - 1].time * 1000);
+            const endDate = new Date(forecast[forecast.length - 1].time * 1000);
+            const futureEvents = await EventsService.getLunarEvents(startDate, endDate);
+            setFutureLunarEvents(futureEvents);
+            combinedLunarEvents = futureEvents;
+          }
         }
         
         // Загружаем события для отображения на графике
@@ -180,11 +190,11 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
             const startDate = new Date(chartData[0].time * 1000);
             const endDate = new Date(chartData[chartData.length - 1].time * 1000);
             
-            console.log(`Получаем лунные фазы для диапазона: ${startDate.toISOString()} - ${endDate.toISOString()}`);
+            console.log(`Получаем лунные фазы для исторического диапазона: ${startDate.toISOString()} - ${endDate.toISOString()}`);
             
             // Получаем лунные события за указанный период через сервис событий
             const lunarEvents = await EventsService.getLunarEvents(startDate, endDate);
-            console.log('Получено лунных событий:', lunarEvents.length, lunarEvents);
+            console.log('Получено исторических лунных событий:', lunarEvents.length, lunarEvents);
             
             // Нормализуем формат событий
             const normalizedEvents = lunarEvents.map(event => {
@@ -212,12 +222,18 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
               };
             }
             
+            // Сначала сохраняем только исторические события
             setLunarEvents(normalizedEvents);
             
-            // Объединяем исторические и прогнозные лунные события
+            // Затем объединяем исторические и прогнозные лунные события
             if (combinedLunarEvents.length > 0) {
+              console.log('Объединяем исторические и прогнозные лунные события');
               const normFutureLunarEvents = combinedLunarEvents.map(event => {
-                if (event.time) return event;
+                if (event.time) return {
+                  ...event,
+                  isFuture: true
+                };
+                
                 return {
                   time: new Date(event.date).getTime() / 1000,
                   type: event.type,
@@ -228,7 +244,24 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
                 };
               });
               
-              setLunarEvents([...normalizedEvents, ...normFutureLunarEvents]);
+              console.log('Нормализованные будущие события:', normFutureLunarEvents.length);
+              
+              const allEvents = [...normalizedEvents, ...normFutureLunarEvents];
+              console.log('Все лунные события:', allEvents.length);
+              
+              // Удаляем дубликаты по времени
+              const uniqueEvents = [];
+              const timeMap = new Map();
+              
+              allEvents.forEach(event => {
+                if (!timeMap.has(event.time)) {
+                  timeMap.set(event.time, true);
+                  uniqueEvents.push(event);
+                }
+              });
+              
+              console.log('Уникальные лунные события:', uniqueEvents.length);
+              setLunarEvents(uniqueEvents);
             }
           } catch (err) {
             console.error('Ошибка при загрузке лунных фаз:', err);
@@ -328,6 +361,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
       
       // Добавляем серию для прогнозных данных, если они есть
       if (forecastData && forecastData.length > 0 && showForecast) {
+        console.log('Добавляем прогнозные данные на график:', forecastData.length);
         const forecastSeries = chart.addCandlestickSeries({
           upColor: isDarkMode ? 'rgba(38, 166, 154, 0.6)' : 'rgba(76, 175, 80, 0.6)',
           downColor: isDarkMode ? 'rgba(239, 83, 80, 0.6)' : 'rgba(244, 67, 54, 0.6)',
@@ -344,27 +378,39 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
       // Добавляем маркеры для лунных фаз
       if (lunarEvents && lunarEvents.length > 0) {
         try {
+          console.log('Добавляем маркеры лунных фаз на график:', lunarEvents.length);
+          
           // Создаем маркеры для лунных фаз
           const lunarMarkers = lunarEvents.map((event) => {
             // Определяем цвет маркера в зависимости от типа события
-            const markerColor = event.type === 'new_moon' 
-              ? isDarkMode ? '#64748b' : '#334155' 
-              : isDarkMode ? '#f1f5f9' : '#94a3b8';
-              
-            const price = getApproximatePriceForDate(new Date(event.time * 1000), [...chartData, ...forecastData]);
+            const isNewMoon = event.type === 'new_moon';
+            
+            // Разные цвета для исторических и прогнозных событий
+            let markerColor;
+            if (event.isFuture) {
+              markerColor = isNewMoon ? '#ec4899' : '#8b5cf6'; // Розовый/Фиолетовый для прогноза
+            } else {
+              markerColor = isNewMoon 
+                ? (isDarkMode ? '#64748b' : '#334155') 
+                : (isDarkMode ? '#f1f5f9' : '#94a3b8');
+            }
+            
+            // Получаем приблизительную цену для маркера
+            const combinedData = [...chartData, ...forecastData];
+            const price = getApproximatePriceForDate(new Date(event.time * 1000), combinedData);
             
             // Устанавливаем разный стиль для будущих событий
-            const size = event.isFuture ? 1.2 : 1;
+            const size = event.isFuture ? 1.5 : 1;
             const position = 'aboveBar';
             
             return {
               time: event.time,
               position: position,
               shape: 'text',
-              text: event.icon || (event.type === 'new_moon' ? '🌑' : '🌕'),
+              text: event.icon || (isNewMoon ? '🌑' : '🌕'),
               size: size,
               price: price * 1.01,
-              color: event.isFuture ? '#ec4899' : undefined // Выделяем будущие события другим цветом
+              color: markerColor
             };
           });
           
@@ -379,8 +425,6 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
           } else {
             console.log('Маркеры уже отсортированы по времени');
           }
-          
-          console.log('Добавляем маркеры лунных фаз на график:', lunarMarkers);
           
           // Добавляем маркеры на график
           candlestickSeriesRef.current.setMarkers(lunarMarkers);
@@ -702,7 +746,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
         Для масштабирования кликните на график или используйте Ctrl+колесико мыши
         {showForecast && (
           <span className="ml-2 text-blue-500 dark:text-blue-400">
-            • Прозрачная область - прогнозные данные на основе текущего тренда
+            • Полупрозрачная область - прогноз будущих периодов с лунными фазами
           </span>
         )}
       </div>

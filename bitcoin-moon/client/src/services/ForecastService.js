@@ -35,35 +35,23 @@ class ForecastService {
       case '1w': intervalInSeconds = 7 * 24 * 60 * 60; break;
       default: intervalInSeconds = 24 * 60 * 60;
     }
-
-    // Базовая волатильность, используемая для прогноза
-    const volatility = lastCandle.close * 0.02; // 2% волатильность
     
-    // Генерируем прогнозные свечи
+    // Генерируем прогнозные свечи с фиксированной ценой последней свечи
     for (let i = 1; i <= periods; i++) {
       // Время следующей свечи
       const time = lastCandle.time + i * intervalInSeconds;
       
-      // Генерируем случайные изменения цен с учетом предыдущих данных
-      // Используем нормальное распределение для более реалистичных изменений
-      const randomFactor = this._normalRandom(0, 1);
-      const trendFactor = this._calculateTrend(historicalData); // Учитываем тренд
+      // Используем точно такую же цену, как в последней свече
+      const price = lastCandle.close;
       
-      // Рассчитываем цены для новой свечи
-      const open = lastCandle.close;
-      const close = open * (1 + (randomFactor * 0.01) + (trendFactor * 0.005));
-      const high = Math.max(open, close) * (1 + Math.abs(randomFactor) * 0.005);
-      const low = Math.min(open, close) * (1 - Math.abs(randomFactor) * 0.005);
-      const volume = lastCandle.volume ? Math.max(1, lastCandle.volume * (1 + randomFactor * 0.1)) : 0;
-      
-      // Добавляем новую свечу в прогноз
+      // Добавляем новую свечу в прогноз с идентичными значениями цены
       forecastData.push({
         time,
-        open,
-        high,
-        low,
-        close,
-        volume,
+        open: price,
+        high: price,
+        low: price,
+        close: price,
+        volume: lastCandle.volume || 0,
         isForecast: true // Маркер, что это прогнозные данные
       });
     }
@@ -92,8 +80,12 @@ class ForecastService {
       const startDate = new Date(historicalData[historicalData.length - 1].time * 1000);
       const endDate = new Date(forecastData[forecastData.length - 1].time * 1000);
       
+      console.log(`Запрашиваем лунные события для прогноза: ${startDate.toISOString()} - ${endDate.toISOString()}`);
+      
       // Получаем лунные события для прогнозного периода
       const lunarEvents = await EventsService.getLunarEvents(startDate, endDate);
+      
+      console.log(`Получено лунных событий для прогноза: ${lunarEvents.length}`, lunarEvents);
       
       return {
         historicalData,

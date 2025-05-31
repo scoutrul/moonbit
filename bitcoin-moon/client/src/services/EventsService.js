@@ -348,6 +348,8 @@ class EventsService {
       const start = startDate.toISOString();
       const end = endDate.toISOString();
       
+      console.log(`EventsService: запрашиваем лунные события с ${start} по ${end}`);
+      
       const response = await api.get('/moon/historical-events', {
         params: { startDate: start, endDate: end }
       });
@@ -355,14 +357,19 @@ class EventsService {
       // Если получены пустые данные, возвращаем мок-данные
       if (!response.data || response.data.length === 0) {
         console.warn('EventsService: получены пустые данные от API, используем мок-данные');
-        return this._getMockLunarEvents(startDate, endDate);
+        const mockData = this._getMockLunarEvents(startDate, endDate);
+        console.log(`EventsService: сгенерировано ${mockData.length} мок-событий`);
+        return mockData;
       }
       
+      console.log(`EventsService: получено ${response.data.length} событий от API`);
       return response.data;
     } catch (error) {
       console.error('Ошибка при получении лунных событий:', error);
       // В случае ошибки генерируем мок-данные
-      return this._getMockLunarEvents(startDate, endDate);
+      const mockData = this._getMockLunarEvents(startDate, endDate);
+      console.log(`EventsService: после ошибки сгенерировано ${mockData.length} мок-событий`);
+      return mockData;
     }
   }
   
@@ -376,26 +383,64 @@ class EventsService {
   _getMockLunarEvents(startDate, endDate) {
     const events = [];
     
+    // Проверяем, что endDate больше startDate
+    if (endDate < startDate) {
+      console.error('Ошибка: конечная дата раньше начальной даты');
+      return [];
+    }
+    
+    console.log(`_getMockLunarEvents: генерация событий с ${startDate.toISOString()} по ${endDate.toISOString()}`);
+    
+    // Вычисляем разницу в днях
+    const diffTime = Math.abs(endDate - startDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    console.log(`_getMockLunarEvents: разница в днях: ${diffDays}`);
+    
     // Генерируем новолуния и полнолуния
     let currentDate = new Date(startDate);
-    const lunarCycle = 29.5 * 24 * 60 * 60 * 1000; // ~29.5 дней в миллисекундах
+    
+    // Лунный цикл примерно 29.53 дней
+    const lunarCycle = 29.53 * 24 * 60 * 60 * 1000; // ~29.53 дней в миллисекундах
     const halfLunarCycle = lunarCycle / 2;
     
-    // Начнем с новолуния
+    // Находим ближайшее новолуние перед начальной датой
+    // Для простоты предположим, что 1 января 2022 года было новолуние
+    const referenceNewMoon = new Date('2022-01-01T00:00:00Z').getTime();
+    const msFromReference = startDate.getTime() - referenceNewMoon;
+    const cyclesSinceReference = msFromReference / lunarCycle;
+    const cycleFraction = cyclesSinceReference - Math.floor(cyclesSinceReference);
+    
+    // Корректируем начальную дату для поиска ближайшего новолуния
+    let nearestNewMoon;
+    if (cycleFraction < 0.5) {
+      // Ближайшее новолуние было недавно
+      nearestNewMoon = new Date(startDate.getTime() - cycleFraction * lunarCycle);
+    } else {
+      // Ближайшее новолуние будет скоро
+      nearestNewMoon = new Date(startDate.getTime() + (1 - cycleFraction) * lunarCycle);
+    }
+    
+    // Устанавливаем текущую дату на ближайшее новолуние
+    currentDate = new Date(nearestNewMoon);
+    
+    // Генерируем события для всего периода
     while (currentDate <= endDate) {
-      // Новолуние
-      events.push({
-        date: new Date(currentDate).toISOString(),
-        type: 'new_moon',
-        phase: 0,
-        phaseName: 'Новолуние',
-        title: 'Новолуние',
-        icon: '🌑'
-      });
+      if (currentDate >= startDate) {
+        // Добавляем новолуние, если оно попадает в запрошенный период
+        events.push({
+          date: new Date(currentDate).toISOString(),
+          type: 'new_moon',
+          phase: 0,
+          phaseName: 'Новолуние',
+          title: 'Новолуние',
+          icon: '🌑'
+        });
+      }
       
-      // Полнолуние (через ~14.75 дней после новолуния)
+      // Переходим к следующему полнолунию
       const fullMoonDate = new Date(currentDate.getTime() + halfLunarCycle);
-      if (fullMoonDate <= endDate) {
+      if (fullMoonDate <= endDate && fullMoonDate >= startDate) {
+        // Добавляем полнолуние, если оно попадает в запрошенный период
         events.push({
           date: fullMoonDate.toISOString(),
           type: 'full_moon',
@@ -410,8 +455,16 @@ class EventsService {
       currentDate = new Date(currentDate.getTime() + lunarCycle);
     }
     
-    // Сортируем события по дате
-    return events.sort((a, b) => new Date(a.date) - new Date(b.date));
+    // Сортируем события по дате и убеждаемся, что все они в запрошенном диапазоне
+    const filteredEvents = events.filter(event => {
+      const eventDate = new Date(event.date);
+      return eventDate >= startDate && eventDate <= endDate;
+    });
+    
+    const sortedEvents = filteredEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+    console.log(`_getMockLunarEvents: сгенерировано ${sortedEvents.length} лунных событий`);
+    
+    return sortedEvents;
   }
 
   /**
