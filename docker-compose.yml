@@ -9,6 +9,8 @@ services:
       - CHOKIDAR_USEPOLLING=true
     ports:
       - '3000:3000'
+    volumes:
+      - ./bitcoin-moon/client/src:/app/src
     depends_on:
       - server
     restart: unless-stopped
