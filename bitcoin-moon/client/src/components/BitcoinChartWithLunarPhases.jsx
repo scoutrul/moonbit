@@ -20,6 +20,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
   const [events, setEvents] = useState([]);
   const [lunarEvents, setLunarEvents] = useState([]);
   const unsubscribeRef = useRef(null);
+  const [isChartFocused, setIsChartFocused] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     // Инициализируем состояние темы при первом рендере
     const isDark = document.documentElement.classList.contains('dark');
@@ -236,7 +237,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
 
       const chart = createChart(chartContainerRef.current, {
         width: chartContainerRef.current.clientWidth,
-        height: 400,
+        height: 600,
         layout: theme.layout,
         grid: theme.grid,
         crosshair: theme.crosshair,
@@ -254,6 +255,19 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
             top: 0.1,
             bottom: 0.1,
           },
+        },
+        handleScroll: {
+          // Прокрутку графика разрешаем только если график в фокусе или нажата клавиша Ctrl
+          vertTouchDrag: false,
+          horzTouchDrag: false,
+          mouseWheel: false,
+          pressedMouseMove: true,
+        },
+        handleScale: {
+          // Масштабирование разрешаем только если график в фокусе или нажата клавиша Ctrl
+          axisPressedMouseMove: true,
+          mouseWheel: false,
+          pinch: false,
         },
       });
 
@@ -408,10 +422,89 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
         }
       };
 
+      // Добавляем обработчики фокуса
+      const handleChartFocus = () => {
+        setIsChartFocused(true);
+        if (chartRef.current) {
+          chartRef.current.applyOptions({
+            handleScroll: {
+              vertTouchDrag: true,
+              horzTouchDrag: true,
+              mouseWheel: true,
+              pressedMouseMove: true,
+            },
+            handleScale: {
+              axisPressedMouseMove: true,
+              mouseWheel: true,
+              pinch: true,
+            },
+          });
+        }
+      };
+
+      const handleChartBlur = () => {
+        setIsChartFocused(false);
+        if (chartRef.current) {
+          chartRef.current.applyOptions({
+            handleScroll: {
+              vertTouchDrag: false,
+              horzTouchDrag: false,
+              mouseWheel: false,
+              pressedMouseMove: true,
+            },
+            handleScale: {
+              axisPressedMouseMove: true,
+              mouseWheel: false,
+              pinch: false,
+            },
+          });
+        }
+      };
+
+      // Обработчик клавиши Ctrl
+      const handleKeyDown = (e) => {
+        if (e.ctrlKey || e.metaKey) {
+          if (chartRef.current) {
+            chartRef.current.applyOptions({
+              handleScroll: {
+                mouseWheel: true,
+              },
+              handleScale: {
+                mouseWheel: true,
+              },
+            });
+          }
+        }
+      };
+
+      const handleKeyUp = (e) => {
+        if (!isChartFocused && chartRef.current) {
+          chartRef.current.applyOptions({
+            handleScroll: {
+              mouseWheel: false,
+            },
+            handleScale: {
+              mouseWheel: false,
+            },
+          });
+        }
+      };
+
+      // Добавляем слушатели событий
+      chartContainerRef.current.addEventListener('mouseenter', handleChartFocus);
+      chartContainerRef.current.addEventListener('mouseleave', handleChartBlur);
+      window.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('keyup', handleKeyUp);
       window.addEventListener('resize', handleResize);
 
       return () => {
         window.removeEventListener('resize', handleResize);
+        window.removeEventListener('keydown', handleKeyDown);
+        window.removeEventListener('keyup', handleKeyUp);
+        if (chartContainerRef.current) {
+          chartContainerRef.current.removeEventListener('mouseenter', handleChartFocus);
+          chartContainerRef.current.removeEventListener('mouseleave', handleChartBlur);
+        }
         if (chartRef.current) {
           chartRef.current.remove();
           chartRef.current = null;
@@ -419,7 +512,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
         }
       };
     }
-  }, [chartData, lunarEvents, events, timeframe, isDarkMode]);
+  }, [chartData, lunarEvents, events, timeframe, isDarkMode, isChartFocused]);
 
   // Функция для получения приблизительной цены для даты события
   const getApproximatePriceForDate = (date, candleData) => {
@@ -474,7 +567,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
             </span>
           </div>
         </div>
-        <div className="animate-pulse h-[400px] bg-gray-200 dark:bg-gray-700 rounded"></div>
+        <div className="animate-pulse h-[600px] bg-gray-200 dark:bg-gray-700 rounded"></div>
       </div>
     );
   }
@@ -487,7 +580,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
             График Bitcoin с фазами Луны
           </h3>
         </div>
-        <div className="h-[400px] flex items-center justify-center text-red-500">
+        <div className="h-[600px] flex items-center justify-center text-red-500">
           {error}
         </div>
       </div>
@@ -522,8 +615,13 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
       <div 
         ref={chartContainerRef} 
         data-testid="bitcoin-chart"
-        className="w-full h-[400px] bg-white dark:bg-gray-800 rounded-lg shadow"
+        className="w-full h-[600px] bg-white dark:bg-gray-800 rounded-lg shadow"
+        tabIndex={0}
+        title="Для масштабирования кликните на график или используйте Ctrl+колесико мыши"
       />
+      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">
+        Для масштабирования кликните на график или используйте Ctrl+колесико мыши
+      </div>
     </div>
   );
 };
