@@ -35,24 +35,24 @@ const Dashboard = () => {
   }, [timeframe]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <div className="flex flex-col gap-4">
       {/* Верхняя панель с текущей ценой */}
-      <div className="lg:col-span-4">
+      <div className="w-full">
         <ErrorWrapper fallbackText="Не удалось загрузить информацию о текущей цене">
           <CurrentPrice />
         </ErrorWrapper>
       </div>
 
-      {/* Основная часть с графиком */}
-      <div className="lg:col-span-3">
+      {/* График на всю ширину */}
+      <div className="w-full">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
           <ErrorWrapper fallbackText="Не удалось загрузить график цены биткоина">
             {loading ? (
-              <div className="h-[400px] flex items-center justify-center">
+              <div className="h-[600px] flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
               </div>
             ) : error ? (
-              <div className="h-[400px] flex items-center justify-center text-red-500">
+              <div className="h-[600px] flex items-center justify-center text-red-500">
                 {error}
               </div>
             ) : (
@@ -60,17 +60,20 @@ const Dashboard = () => {
             )}
           </ErrorWrapper>
         </div>
+      </div>
 
-        <div className="mt-4 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+      {/* Селектор таймфрейма */}
+      <div className="w-full">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
           <ErrorWrapper fallbackText="Не удалось загрузить селектор таймфрейма">
             <TimeframeSelector timeframe={timeframe} onTimeframeChange={setTimeframe} />
           </ErrorWrapper>
         </div>
       </div>
 
-      {/* Боковая панель с предстоящими событиями */}
-      <div className="lg:col-span-1">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
+      {/* Нижняя часть с виджетами */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
           <ErrorWrapper fallbackText="Не удалось загрузить информацию о предстоящих событиях">
             <LunarEventsWidget />
           </ErrorWrapper>

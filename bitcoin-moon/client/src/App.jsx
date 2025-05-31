@@ -38,7 +38,7 @@ function App() {
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
           <Header darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
           
-          <main className="container mx-auto px-4 py-8">
+          <main className="w-full px-2 sm:px-4 py-4">
             <ErrorBoundary>
               <Dashboard />
             </ErrorBoundary>
