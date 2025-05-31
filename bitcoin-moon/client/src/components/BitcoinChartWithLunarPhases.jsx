@@ -32,6 +32,28 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
     console.log('Начальная инициализация темы:', isDark ? 'темная' : 'светлая');
     return isDark;
   });
+  
+  // Состояние для текущей цены биткоина
+  const [currentPrice, setCurrentPrice] = useState({
+    price: null,
+    change_24h: null,
+    change_percentage_24h: null,
+    last_updated: null
+  });
+  const [priceAnimation, setPriceAnimation] = useState(null); // 'up', 'down', null
+  const lastPriceRef = useRef(null);
+
+  // Таймфреймы для кнопок
+  const timeframes = [
+    { id: '1m', label: '1М' },
+    { id: '5m', label: '5М' },
+    { id: '15m', label: '15М' },
+    { id: '30m', label: '30М' },
+    { id: '1h', label: '1Ч' },
+    { id: '4h', label: '4Ч' },
+    { id: '1d', label: '1Д' },
+    { id: '1w', label: '1Н' }
+  ];
 
   // Цвета для графика
   const lightTheme = {
@@ -92,6 +114,27 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
         candlestickSeriesRef.current.update(updatedCandle);
       }
     }
+    
+    // Обновляем данные текущей цены
+    if (lastPriceRef.current !== null) {
+      const newAnimation = priceData.price > lastPriceRef.current ? 'up' : 'down';
+      setPriceAnimation(newAnimation);
+      
+      // Сбрасываем анимацию через 2 секунды
+      setTimeout(() => {
+        setPriceAnimation(null);
+      }, 2000);
+    }
+    
+    // Обновляем последнюю цену
+    lastPriceRef.current = priceData.price;
+    
+    // Обновляем данные о цене
+    setCurrentPrice(prevData => ({
+      ...prevData,
+      price: priceData.price,
+      last_updated: new Date().toISOString(),
+    }));
   }, [chartData]);
 
   // Эффект для отслеживания изменения темы
@@ -124,8 +167,23 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
 
     observer.observe(document.documentElement, { attributes: true });
 
+    // Добавляем обработчик события изменения таймфрейма
+    const handleTimeframeChange = (event) => {
+      console.log('Событие изменения таймфрейма:', event.detail);
+      
+      // Диспатчим событие вверх до родительского компонента
+      const customEvent = new CustomEvent('timeframe-changed', { 
+        detail: { timeframe: event.detail },
+        bubbles: true
+      });
+      chartContainerRef.current.dispatchEvent(customEvent);
+    };
+
+    window.addEventListener('change-timeframe', handleTimeframeChange);
+
     return () => {
       observer.disconnect();
+      window.removeEventListener('change-timeframe', handleTimeframeChange);
     };
   }, [isDarkMode]);
 
@@ -173,9 +231,35 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
           if (forecast && forecast.length > 0) {
             const startDate = new Date(data[data.length - 1].time * 1000);
             const endDate = new Date(forecast[forecast.length - 1].time * 1000);
+            
+            console.log(`Запрашиваем лунные события для прогноза извне: ${startDate.toISOString()} - ${endDate.toISOString()}`);
+            
             const futureEvents = await EventsService.getLunarEvents(startDate, endDate);
-            setFutureLunarEvents(futureEvents);
-            combinedLunarEvents = futureEvents;
+            
+            // Нормализуем формат будущих событий и отмечаем их как прогнозные
+            const normalizedFutureEvents = futureEvents.map(event => {
+              // Определяем, является ли событие уже нормализованным
+              if (event.time) {
+                return {
+                  ...event,
+                  isFuture: true
+                };
+              }
+              
+              // Иначе преобразуем формат
+              return {
+                time: new Date(event.date).getTime() / 1000,
+                type: event.type,
+                title: event.title || event.phaseName,
+                icon: event.icon,
+                phaseName: event.phaseName || event.title,
+                isFuture: true
+              };
+            });
+            
+            console.log(`Получено нормализованных будущих событий: ${normalizedFutureEvents.length}`);
+            setFutureLunarEvents(normalizedFutureEvents);
+            combinedLunarEvents = normalizedFutureEvents;
           }
         }
         
@@ -260,8 +344,17 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
                 }
               });
               
-              console.log('Уникальные лунные события:', uniqueEvents.length);
-              setLunarEvents(uniqueEvents);
+              // Важно: маркируем события, которые относятся к прогнозному периоду
+              // Это позволит правильно их отображать на графике
+              const lastHistoricalTime = chartData.length > 0 ? chartData[chartData.length - 1].time : 0;
+              
+              const markedEvents = uniqueEvents.map(event => ({
+                ...event,
+                isFuture: event.isFuture || (event.time > lastHistoricalTime)
+              }));
+              
+              console.log('Уникальные лунные события:', markedEvents.length);
+              setLunarEvents(markedEvents);
             }
           } catch (err) {
             console.error('Ошибка при загрузке лунных фаз:', err);
@@ -296,6 +389,28 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
     };
   }, [timeframe, handlePriceUpdate, data, chartData]);
 
+  // Эффект для загрузки текущей цены биткоина
+  useEffect(() => {
+    const fetchPrice = async () => {
+      try {
+        const data = await BitcoinService.getCurrentPrice('usd');
+        setCurrentPrice(data);
+        lastPriceRef.current = data.price;
+      } catch (err) {
+        console.error('Ошибка при получении текущей цены биткоина:', err);
+      }
+    };
+
+    fetchPrice();
+
+    // Обновляем полные данные каждую минуту
+    const interval = setInterval(fetchPrice, 60000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
+
   // Создание графика при монтировании компонента, изменении данных или темы
   useEffect(() => {
     if (chartContainerRef.current && chartData.length > 0) {
@@ -312,7 +427,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
 
       const chart = createChart(chartContainerRef.current, {
         width: chartContainerRef.current.clientWidth,
-        height: 600,
+        height: 500,
         layout: theme.layout,
         grid: theme.grid,
         crosshair: theme.crosshair,
@@ -320,7 +435,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
           timeVisible: true,
           secondsVisible: timeframe === '1m' || timeframe === '3m' || timeframe === '5m',
           borderColor: isDarkMode ? '#2d3748' : '#f0f0f0',
-          barSpacing: 10,
+          barSpacing: 6,
           rightOffset: 5,
         },
         rightPriceScale: {
@@ -397,11 +512,21 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
             
             // Получаем приблизительную цену для маркера
             const combinedData = [...chartData, ...forecastData];
-            const price = getApproximatePriceForDate(new Date(event.time * 1000), combinedData);
+            const eventDate = new Date(event.time * 1000);
+            const price = getApproximatePriceForDate(eventDate, combinedData);
             
             // Устанавливаем разный стиль для будущих событий
             const size = event.isFuture ? 1.5 : 1;
             const position = 'aboveBar';
+            
+            // Определяем, попадает ли событие в прогнозную часть графика
+            const isInForecastPeriod = event.time > (chartData.length > 0 ? chartData[chartData.length - 1].time : 0);
+            
+            // Если event.time в пределах прогнозного периода и showForecast отключен,
+            // не добавляем маркер
+            if (isInForecastPeriod && !showForecast) {
+              return null;
+            }
             
             return {
               time: event.time,
@@ -412,7 +537,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
               price: price * 1.01,
               color: markerColor
             };
-          });
+          }).filter(marker => marker !== null); // Фильтруем null-значения
           
           // Проверяем, отсортированы ли маркеры по времени
           const isSorted = lunarMarkers.every((marker, i, arr) => 
@@ -426,8 +551,26 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
             console.log('Маркеры уже отсортированы по времени');
           }
           
-          // Добавляем маркеры на график
-          candlestickSeriesRef.current.setMarkers(lunarMarkers);
+          // Разделяем маркеры на исторические и прогнозные
+          const lastHistoricalTime = chartData.length > 0 ? chartData[chartData.length - 1].time : 0;
+          
+          const historicalMarkers = lunarMarkers.filter(marker => marker.time <= lastHistoricalTime);
+          const forecastMarkers = lunarMarkers.filter(marker => marker.time > lastHistoricalTime);
+          
+          console.log(`Разделили маркеры: исторических - ${historicalMarkers.length}, прогнозных - ${forecastMarkers.length}`);
+          
+          // Добавляем исторические маркеры на основную серию
+          if (historicalMarkers.length > 0) {
+            candlestickSeriesRef.current.setMarkers(historicalMarkers);
+          }
+          
+          // Добавляем прогнозные маркеры на прогнозную серию, если она есть и прогноз включен
+          if (forecastMarkers.length > 0 && forecastSeriesRef.current && showForecast) {
+            forecastSeriesRef.current.setMarkers(forecastMarkers);
+          } else if (forecastMarkers.length > 0 && showForecast) {
+            // Если прогнозной серии нет, но прогноз включен, добавляем все маркеры на основную серию
+            candlestickSeriesRef.current.setMarkers(lunarMarkers);
+          }
         } catch (err) {
           console.error('Ошибка при добавлении маркеров лунных фаз:', err);
         }
@@ -640,10 +783,31 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
       }
     }
     
-    // Для событий в будущем используем последнюю цену
+    // Проверяем, находится ли событие в будущем (после последней свечи)
     if (targetTimestamp > candleData[candleData.length - 1].time) {
-      const lastCandle = candleData[candleData.length - 1];
-      return lastCandle.close;
+      // Ищем соответствующую прогнозную свечу вместо использования последней реальной
+      // Сначала проверяем, есть ли среди candleData прогнозные свечи
+      const forecastCandles = candleData.filter(candle => candle.isForecast);
+      
+      if (forecastCandles.length > 0) {
+        // Если есть прогнозные свечи, находим ближайшую к событию
+        let closestForecastCandle = forecastCandles[0];
+        let minForecastDiff = Math.abs(targetTimestamp - closestForecastCandle.time);
+        
+        for (const candle of forecastCandles) {
+          const diff = Math.abs(targetTimestamp - candle.time);
+          if (diff < minForecastDiff) {
+            minForecastDiff = diff;
+            closestForecastCandle = candle;
+          }
+        }
+        
+        return closestForecastCandle.close;
+      } else {
+        // Если прогнозных свечей нет, используем последнюю доступную
+        const lastCandle = candleData[candleData.length - 1];
+        return lastCandle.close;
+      }
     }
     
     return closestCandle.close;
@@ -652,6 +816,56 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
   // Переключение отображения прогноза
   const toggleForecast = () => {
     setShowForecast(!showForecast);
+  };
+
+  // Форматирование цены в валюте
+  const formatPrice = (price) => {
+    if (price === null) return '--';
+
+    return new Intl.NumberFormat('ru-RU', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(price);
+  };
+
+  // Форматирование времени последнего обновления
+  const formatLastUpdated = (timestamp) => {
+    if (!timestamp) return '';
+
+    const date = new Date(timestamp);
+    return new Intl.DateTimeFormat('ru-RU', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }).format(date);
+  };
+
+  // Получение класса для анимации цены
+  const getPriceClass = () => {
+    if (!priceAnimation) return 'text-2xl font-bold transition-colors duration-500';
+    return `text-2xl font-bold transition-colors duration-500 ${
+      priceAnimation === 'up' ? 'text-green-500' : 'text-red-500'
+    }`;
+  };
+
+  // Отображение изменения цены
+  const renderChange = () => {
+    const change = currentPrice.change_percentage_24h;
+    if (change === null) return null;
+
+    const isPositive = change >= 0;
+    const changeValue = Math.abs(change).toFixed(2);
+
+    return (
+      <span
+        className={`ml-2 ${isPositive ? 'text-green-500' : 'text-red-500'}`}
+        title={`Изменение за 24 часа: ${isPositive ? '+' : '-'}${changeValue}%`}
+      >
+        {isPositive ? '▲' : '▼'} {changeValue}%
+      </span>
+    );
   };
 
   if (loading && chartData.length === 0) {
@@ -680,7 +894,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
             </span>
           </div>
         </div>
-        <div className="animate-pulse h-[600px] bg-gray-200 dark:bg-gray-700 rounded"></div>
+        <div className="animate-pulse h-[500px] bg-gray-200 dark:bg-gray-700 rounded"></div>
       </div>
     );
   }
@@ -693,7 +907,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
             График Bitcoin с фазами Луны
           </h3>
         </div>
-        <div className="h-[600px] flex items-center justify-center text-red-500">
+        <div className="h-[500px] flex items-center justify-center text-red-500">
           {error}
         </div>
       </div>
@@ -702,54 +916,55 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
 
   return (
     <div className="w-full">
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
-          График Bitcoin с фазами Луны
-        </h3>
+      <div className="flex justify-between items-center mb-1">
         <div className="flex items-center">
-          <button 
-            onClick={toggleForecast} 
-            className={`mr-4 px-2 py-1 text-xs rounded ${showForecast 
-              ? 'bg-blue-500 text-white' 
-              : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-300'}`}
-          >
-            {showForecast ? 'Скрыть прогноз' : 'Показать прогноз'}
-          </button>
-          <div className="flex items-center text-xs">
-            <span className="flex items-center mr-3">
-              <span className="w-3 h-3 rounded-full bg-blue-500 mr-1"></span>
-              <span className="text-gray-600 dark:text-gray-300">Новолуние</span>
+          <img
+            src="/bitcoin-icon.svg"
+            alt="Bitcoin"
+            className="h-6 w-6 mr-2"
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src =
+                'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0iI2Y3OTMxYSI+PHBhdGggZD0iTTE1LjMgMjEuNGMtLjIgMS4yLTEuNyAxLjUtMy4yIDEuMWwuNyAyLjZjMi4xLjUgNC40LS4yIDQuOS0yLjMuNS0yLjEtMS4yLTMuMi0zLjMtMy45bC43LTIuNmMxLjUuNCAzIC43IDMuMi0uNS4yLTEuMi0xLjEtMS44LTIuNi0yLjJsLjctMi42LTEuNy0uNS0uNyAyLjZjLS40LS4xLS45LS4yLTEuMy0uM2wuNy0yLjYtMS43LS41LS43IDIuNmMtLjQtLjEtLjctLjItMS4xLS4zbC45LTMuNC0xLjctLjUtLjcgMi42Yy0yLjEtLjUtNC40LjItNC45IDIuMy0uNSAyLjEgMS4yIDMuMiAzLjMgMy45bC0uNyAyLjZjLTEuNS0uNC0zLS43LTMuMi41LS4yIDEuMiAxLjEgMS44IDIuNiAyLjJsLS43IDIuNiAxLjcuNS43LTIuNmMuNC4xLjkuMiAxLjMuM2wtLjcgMi42IDEuNy41LjctMi42Yy40LjEuNy4yIDEuMS4zbC0uOSAzLjQgMS43LjUuNy0yLjZ6Ii8+PC9zdmc+';
+            }}
+          />
+          <div className="flex items-center">
+            <h3 className="text-base font-semibold text-gray-800 dark:text-white mr-2">
+              Bitcoin
+            </h3>
+            <span className={getPriceClass().replace('text-2xl', 'text-lg')}>
+              {formatPrice(currentPrice.price)}
             </span>
-            <span className="flex items-center mr-3">
-              <span className="w-3 h-3 rounded-full bg-yellow-400 mr-1"></span>
-              <span className="text-gray-600 dark:text-gray-300">Полнолуние</span>
-            </span>
-            <span className="flex items-center mr-3">
-              <span className="w-3 h-3 rounded-sm bg-pink-500 mr-1"></span>
-              <span className="text-gray-600 dark:text-gray-300">Астро</span>
-            </span>
-            <span className="flex items-center">
-              <span className="w-3 h-3 transform rotate-45 bg-green-500 mr-1"></span>
-              <span className="text-gray-600 dark:text-gray-300">Экономика</span>
-            </span>
+            {renderChange()}
+            {currentPrice.last_updated && (
+              <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                Обновлено: {formatLastUpdated(currentPrice.last_updated)}
+              </span>
+            )}
           </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-1 justify-end">
+          {timeframes.map((option) => (
+            <button
+              key={option.id}
+              className={`px-2 py-0.5 text-xs rounded-lg transition-all ${
+                timeframe === option.id
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+              onClick={() => window.dispatchEvent(new CustomEvent('change-timeframe', { detail: option.id }))}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
       </div>
       <div 
         ref={chartContainerRef} 
         data-testid="bitcoin-chart"
-        className="w-full h-[600px] bg-white dark:bg-gray-800 rounded-lg shadow"
+        className="w-full h-[500px] bg-white dark:bg-gray-800 rounded-lg shadow-sm"
         tabIndex={0}
-        title="Для масштабирования кликните на график или используйте Ctrl+колесико мыши"
       />
-      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">
-        Для масштабирования кликните на график или используйте Ctrl+колесико мыши
-        {showForecast && (
-          <span className="ml-2 text-blue-500 dark:text-blue-400">
-            • Полупрозрачная область - прогноз будущих периодов с лунными фазами
-          </span>
-        )}
-      </div>
     </div>
   );
 };
