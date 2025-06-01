@@ -25,7 +25,21 @@ try {
   // Global middlewares
   app.use(
     cors({
-      origin: config.cors.origin,
+      origin: (origin, callback) => {
+        // Разрешаем запросы без origin (например, с CURL или Postman)
+        if (!origin) return callback(null, true);
+        
+        const allowedOrigins = Array.isArray(config.cors.origin) 
+          ? config.cors.origin 
+          : [config.cors.origin];
+          
+        if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
+          callback(null, true);
+        } else {
+          logger.warn(`CORS блокирует запрос с origin: ${origin}`);
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
       optionsSuccessStatus: 200,
     })
   );

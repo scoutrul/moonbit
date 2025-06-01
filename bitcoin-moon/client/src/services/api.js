@@ -1,10 +1,20 @@
 /**
  * Модуль для работы с API
  */
+// @ts-nocheck
 import axios from 'axios';
 
-// Определяем базовый URL для API
-const baseURL = '/api'; // Всегда используем относительный путь
+// Определяем базовый URL для API - при деплое используем переменные окружения
+let baseURL = '/api'; // По умолчанию относительный путь для локальной разработки
+
+// Проверяем window.ENV для production или import.meta.env для dev
+if (typeof window !== 'undefined' && window.ENV && window.ENV.VITE_API_URL) {
+  baseURL = window.ENV.VITE_API_URL;
+} else if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) {
+  baseURL = import.meta.env.VITE_API_URL;
+}
+
+console.log('API baseURL:', baseURL);
 
 // Создаем экземпляр axios с базовой конфигурацией
 const api = axios.create({

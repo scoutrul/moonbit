@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: moonbit-backend
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: CORS_ORIGIN
+        value: https://moonbit.onrender.com
+      - key: LOG_LEVEL
+        value: info
+      - key: BYBIT_API_KEY
+        value: dummy_key
+      - key: BYBIT_API_SECRET
+        value: dummy_secret
+      - key: CACHE_TTL_OHLC
+        value: 60
+      - key: REDIS_URL
+        value: none
+      - key: COINGECKO_API_KEY
+        sync: false
+      - key: FARMSENSE_API_KEY
+        sync: false 
