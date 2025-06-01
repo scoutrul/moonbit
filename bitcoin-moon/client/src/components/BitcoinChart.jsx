@@ -126,7 +126,7 @@ const BitcoinChart = () => {
         const markers = astroEvents.map(event => {
           // Определяем цвет и форму маркера в зависимости от типа события
           let color = '#FFFFFF';
-          let shape = 'circle';
+          const shape = 'circle';
           let position = 'aboveBar';
           
           switch (event.type) {

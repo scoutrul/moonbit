@@ -1,7 +1,7 @@
 const Header = ({ darkMode, toggleDarkMode }) => {
   return (
     <header className="bg-white dark:bg-gray-800 shadow">
-      <div className="w-full px-2 py-4 flex justify-between items-center">
+      <div className="w-full px-2 flex justify-between items-center">
         <div className="flex items-center">
           <a href="/" className="flex items-center">
             <img 

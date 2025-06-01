@@ -7,10 +7,13 @@ services:
     environment:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
+      - VITE_API_BASE_URL=http://server:3001
     ports:
       - '3000:3000'
+      - '5173:5173'
     volumes:
-      - ./bitcoin-moon/client/src:/app/src
+      - ./bitcoin-moon/client:/app
+      - /app/node_modules
     depends_on:
       - server
     restart: unless-stopped
@@ -21,15 +24,16 @@ services:
       dockerfile: Dockerfile
     container_name: moonbit-server
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - PORT=3001
       # Эти переменные используются для работы с внешними API
       # Можно указать фиктивные значения для запуска
       - COINGECKO_API_KEY=dummy_key
       - FARMSENSE_API_KEY=dummy_key
-      - CORS_ORIGIN=http://localhost:3000
+      - CORS_ORIGIN=http://localhost:3000,http://client:3000
     ports:
       - '3001:3001'
     volumes:
-      - ./bitcoin-moon/server/logs:/app/logs
+      - ./bitcoin-moon/server:/app
+      - /app/node_modules
     restart: unless-stopped

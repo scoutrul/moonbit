@@ -1,5 +1,4 @@
-import { moonphase } from 'astronomia';
-import { julian } from 'astronomia';
+import { moonphase, julian } from 'astronomia';
 import logger from '../utils/logger.js';
 import astroRepository from '../repositories/AstroRepository.js';
 
@@ -26,7 +25,7 @@ class AstroService {
 
     // Если данные устарели (более 24 часов), запускаем обновление
     const cacheAge = astroCache.last_updated
-      ? (new Date() - new Date(astroCache.last_updated)) / 1000 / 60 / 60
+      ? (new Date().getTime() - new Date(astroCache.last_updated).getTime()) / 1000 / 60 / 60
       : 9999;
 
     if (cacheAge > 24) {
@@ -585,7 +584,7 @@ class AstroService {
       logger.debug(`AstroService: получение лунных событий в периоде от ${startDate.toISOString()} до ${endDate.toISOString()}`);
       
       const events = [];
-      let currentDate = new Date(startDate);
+      const currentDate = new Date(startDate);
       
       // Получаем ближайшее новолуние после начальной даты
       let nextNewMoon = this.getNewMoonAfter(currentDate);
@@ -622,7 +621,7 @@ class AstroService {
       logger.debug(`AstroService: найдено ${events.length} лунных событий в периоде`);
       
       // Сортируем события по дате
-      return events.sort((a, b) => new Date(a.date) - new Date(b.date));
+      return events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     } catch (error) {
       logger.error('Error calculating lunar events in period:', error);
       
@@ -688,7 +687,7 @@ class AstroService {
     }
     
     // Сортируем события по дате
-    return events.sort((a, b) => new Date(a.date) - new Date(b.date));
+    return events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
 
   /**
