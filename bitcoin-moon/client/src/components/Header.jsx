@@ -3,15 +3,14 @@ const Header = ({ darkMode, toggleDarkMode }) => {
     <header className="bg-white dark:bg-gray-800 shadow">
       <div className="w-full px-2 py-4 flex justify-between items-center">
         <div className="flex items-center">
-          <svg
-            className="h-8 w-8 text-yellow-500 mr-2"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
-          </svg>
-          <h1 className="text-xl font-bold">Биткоин и Луна</h1>
+          <a href="/" className="flex items-center">
+            <img 
+              src="/logo.png" 
+              alt="Биткоин и Луна" 
+              width="64" 
+              height="64" 
+            />
+          </a>
         </div>
 
         <div className="flex items-center">

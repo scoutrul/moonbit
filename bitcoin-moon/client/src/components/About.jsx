@@ -4,7 +4,16 @@ const About = () => {
   return (
     <div className="w-full px-2">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white">О проекте «Биткоин и Луна»</h1>
+        <div className="flex flex-col items-center mb-8">
+          <h1 className="text-2xl font-bold text-center text-gray-800 dark:text-white">О проекте «Биткоин и Луна»</h1>
+          <img 
+            src="/logo.png" 
+            alt="Логотип Биткоин и Луна" 
+            className="mb-4" 
+            height="160"
+            width="160"
+          />
+        </div>
         
         <section className="mb-8">
           <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Концепция проекта</h2>

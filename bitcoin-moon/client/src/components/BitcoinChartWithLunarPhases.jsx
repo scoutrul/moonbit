@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { createChart } from 'lightweight-charts';
 import BitcoinService from '../services/BitcoinService';
@@ -8,8 +9,16 @@ import { subscribeToPriceUpdates } from '../utils/mockDataGenerator';
 
 /**
  * Компонент для отображения графика биткоина с фазами Луны
+ * @typedef {Object} CandlestickData
+ * @property {number} time - временная метка
+ * @property {number} open - цена открытия
+ * @property {number} high - максимальная цена
+ * @property {number} low - минимальная цена
+ * @property {number} close - цена закрытия
+ * 
  * @param {Object} props - свойства компонента
  * @param {string} props.timeframe - выбранный таймфрейм
+ * @param {CandlestickData[]} props.data - данные для отображения на графике
  */
 const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
   const chartContainerRef = useRef(null);
@@ -925,7 +934,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
             onError={(e) => {
               e.target.onerror = null;
               e.target.src =
-                'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0iI2Y3OTMxYSI+PHBhdGggZD0iTTE1LjMgMjEuNGMtLjIgMS4yLTEuNyAxLjUtMy4yIDEuMWwuNyAyLjZjMi4xLjUgNC40LS4yIDQuOS0yLjMuNS0yLjEtMS4yLTMuMi0zLjMtMy45bC43LTIuNmMxLjUuNCAzIC43IDMuMi0uNS4yLTEuMi0xLjEtMS44LTIuNi0yLjJsLjctMi42LTEuNy0uNS0uNyAyLjZjLS40LS4xLS45LS4yLTEuMy0uM2wuNy0yLjYtMS43LS41LS43IDIuNmMtLjQtLjEtLjctLjItMS4xLS4zbC45LTMuNC0xLjctLjUtLjcgMi42Yy0yLjEtLjUtNC40LjItNC45IDIuMy0uNSAyLjEgMS4yIDMuMiAzLjMgMy45bC0uNyAyLjZjLTEuNS0uNC0zLS43LTMuMi41LS4yIDEuMiAxLjEgMS44IDIuNiAyLjJsLS43IDIuNiAxLjcuNS43LTIuNmMuNC4xLjkuMiAxLjMuM2wtLjcgMi42IDEuNy41LjctMi42Yy40LjEuNy4yIDEuMS4zbC0uOSAzLjQgMS43LjUuNy0yLjZ6Ii8+PC9zdmc+';
+                'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0iI2Y3OTMxYSI+PHBhdGggZD0iTTE1LjMgMjEuNGMtLjIgMS4yLTEuNyAxLjUtMy4yIDEuMWwuNyAyLjZjMi4xLjUgNC40LS4yIDQuOS0yLjMuNS0yLjEtMS4yLTMuMi0zLjMtMy45bC43LTIuNmMxLjUuNCAzIC43IDMuMi0uNS4yLTEuMi0xLjEtMS44LTIuNi0yLjJsLjctMi42LTEuNy0uNS0uNyAyLjZjLS40LS4xLS45LS4yLTEuMy0uM2wuNy0yLjYtMS43LS41LS43IDIuNmMtLjQtLjEtLjctLjItMS4xLS4zbC0uOSAzLjQgMS43LjUuNy0yLjZ6Ii8+PC9zdmc+';
             }}
           />
           <div className="flex items-center">

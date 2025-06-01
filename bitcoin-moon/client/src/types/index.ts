@@ -71,6 +71,25 @@ export interface AstroData {
 export type TimeframeOption = '1d' | '7d' | '14d' | '30d' | '90d' | '365d';
 
 /**
+ * Свечные данные для графика
+ */
+export interface CandlestickData {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
+
+/**
+ * Свойства компонента BitcoinChartWithLunarPhases
+ */
+export interface BitcoinChartProps {
+  timeframe: string;
+  data: CandlestickData[];
+}
+
+/**
  * Параметр запроса для получения цены биткоина
  */
 export interface BitcoinPriceParams {
