@@ -562,33 +562,13 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
         
         // Форматируем цены
         const formattedDate = formatDate(time);
-        const formattedOpen = formatPrice(open);
-        const formattedHigh = formatPrice(high);
-        const formattedLow = formatPrice(low);
         const formattedClose = formatPrice(close);
         
-        // Устанавливаем HTML легенды
+        // Устанавливаем HTML легенды (упрощенная версия)
         legendRef.current.innerHTML = `
           <div style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">Bitcoin (BTC/USD)</div>
-          <div style="font-size: 14px; margin-bottom: 2px;">${formattedDate}</div>
-          <div style="display: flex; justify-content: space-between; margin-top: 8px;">
-            <span>Открытие:</span>
-            <span style="font-weight: 500;">${formattedOpen}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; margin-top: 4px;">
-            <span>Максимум:</span>
-            <span style="font-weight: 500;">${formattedHigh}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; margin-top: 4px;">
-            <span>Минимум:</span>
-            <span style="font-weight: 500;">${formattedLow}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; margin-top: 4px;">
-            <span>Закрытие:</span>
+          <div style="display: flex; align-items: center; gap: 4px;">
             <span style="font-weight: 500;">${formattedClose}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; margin-top: 8px; font-weight: 500;">
-            <span>Изменение:</span>
             <span style="color: ${changeColor};">${changeText}</span>
           </div>
         `;
@@ -1010,9 +990,6 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
     return (
       <div className="w-full">
         <div className="flex justify-between items-center mb-2">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
-            График Bitcoin с фазами Луны
-          </h3>
           <div className="flex items-center text-xs">
             <span className="flex items-center mr-3">
               <span className="w-3 h-3 rounded-full bg-blue-500 mr-1"></span>
@@ -1040,11 +1017,6 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
   if (error && chartData.length === 0) {
     return (
       <div className="w-full">
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
-            График Bitcoin с фазами Луны
-          </h3>
-        </div>
         <div className="h-[500px] flex items-center justify-center text-red-500">
           {error}
         </div>
@@ -1053,35 +1025,15 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
   }
 
   return (
-    <div className="w-full">
-      <div className="flex justify-between items-center mb-1">
-        <div className="flex items-center">
-          <img
-            src="/bitcoin-icon.svg"
-            alt="Bitcoin"
-            className="h-6 w-6 mr-2"
-            onError={(e) => {
-              e.target.onerror = null;
-              e.target.src =
-                'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0iI2Y3OTMxYSI+PHBhdGggZD0iTTE1LjMgMjEuNGMtLjIgMS4yLTEuNyAxLjUtMy4yIDEuMWwuNyAyLjZjMi4xLjUgNC40LS4yIDQuOS0yLjMuNS0yLjEtMS4yLTMuMi0zLjMtMy45bC43LTIuNmMxLjUuNCAzIC43IDMuMi0uNS4yLTEuMi0xLjEtMS44LTIuNi0yLjJsLjctMi42LTEuNy0uNS0uNyAyLjZjLS40LS4xLS45LS4yLTEuMy0uM2wuNy0yLjYtMS43LS41LS43IDIuNmMtLjQtLjEtLjctLjItMS4xLS4zbC0uOSAzLjQgMS43LjUuNy0yLjZ6Ii8+PC9zdmc+';
-            }}
-          />
-          <div className="flex items-center">
-            <h3 className="text-base font-semibold text-gray-800 dark:text-white mr-2">
-              Bitcoin
-            </h3>
-            <span className={getPriceClass().replace('text-2xl', 'text-lg')}>
-              {formatPrice(currentPrice.price)}
-            </span>
-            {renderChange()}
-            {currentPrice.last_updated && (
-              <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-                Обновлено: {formatLastUpdated(currentPrice.last_updated)}
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-1 justify-end">
+    <div className="w-full flex flex-col gap-4">
+      <div 
+        ref={chartContainerRef} 
+        data-testid="bitcoin-chart"
+        className="w-full h-[500px] bg-white dark:bg-gray-800 rounded-lg shadow-sm relative"
+        tabIndex={0}
+      />
+
+      <div className="flex justify-end items-center mb-1 gap-2 content-center">
           {timeframes.map((option) => (
             <button
               key={option.id}
@@ -1094,15 +1046,8 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
             >
               {option.label}
             </button>
-          ))}
-        </div>
+            ))}
       </div>
-      <div 
-        ref={chartContainerRef} 
-        data-testid="bitcoin-chart"
-        className="w-full h-[500px] bg-white dark:bg-gray-800 rounded-lg shadow-sm relative"
-        tabIndex={0}
-      />
     </div>
   );
 };
