@@ -25,6 +25,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
   const chartRef = useRef(null);
   const candlestickSeriesRef = useRef(null);
   const forecastSeriesRef = useRef(null);
+  const legendRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [chartData, setChartData] = useState(data || []);
@@ -420,6 +421,18 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
     };
   }, []);
 
+  // Функция для форматирования даты в русском формате
+  const formatDate = (timestamp) => {
+    if (!timestamp) return '';
+    
+    const date = new Date(timestamp * 1000);
+    return new Intl.DateTimeFormat('ru-RU', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    }).format(date);
+  };
+
   // Создание графика при монтировании компонента, изменении данных или темы
   useEffect(() => {
     if (chartContainerRef.current && chartData.length > 0) {
@@ -431,15 +444,19 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
         forecastSeriesRef.current = null;
       }
       
+      // Удаляем старую легенду, если она существует
+      if (legendRef.current && chartContainerRef.current.contains(legendRef.current)) {
+        chartContainerRef.current.removeChild(legendRef.current);
+        legendRef.current = null;
+      }
+      
       const theme = isDarkMode ? darkTheme : lightTheme;
       console.log('Создаем график с темой:', isDarkMode ? 'темная' : 'светлая');
 
       const chart = createChart(chartContainerRef.current, {
+        ...theme,
         width: chartContainerRef.current.clientWidth,
         height: 500,
-        layout: theme.layout,
-        grid: theme.grid,
-        crosshair: theme.crosshair,
         timeScale: {
           timeVisible: true,
           secondsVisible: timeframe === '1m' || timeframe === '3m' || timeframe === '5m',
@@ -482,6 +499,106 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
       candlestickSeries.setData(chartData);
       chartRef.current = chart;
       candlestickSeriesRef.current = candlestickSeries;
+      
+      // Создаем легенду для графика
+      legendRef.current = document.createElement('div');
+      const legendStyle = {
+        position: 'absolute',
+        left: '12px',
+        top: '12px',
+        zIndex: '1',
+        fontSize: '14px',
+        fontFamily: 'sans-serif',
+        lineHeight: '18px',
+        fontWeight: '300',
+        color: isDarkMode ? '#f1f5f9' : '#1e293b',
+        padding: '8px',
+        borderRadius: '4px',
+        backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.7)',
+        boxShadow: isDarkMode ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)',
+        backdropFilter: 'blur(2px)'
+      };
+      
+      // Применяем стили к легенде
+      Object.assign(legendRef.current.style, legendStyle);
+      chartContainerRef.current.appendChild(legendRef.current);
+      
+      // Функция для получения последней свечи
+      const getLastBar = series => {
+        const lastIndex = series.dataByIndex(Number.MAX_SAFE_INTEGER, -1);
+        return series.dataByIndex(lastIndex);
+      };
+      
+      // Функция обновления легенды
+      const updateLegend = param => {
+        if (!legendRef.current) return;
+        
+        const validCrosshairPoint = !(
+          param === undefined || 
+          param.time === undefined || 
+          param.point.x < 0 || 
+          param.point.y < 0
+        );
+        
+        // Получаем данные о свече
+        const bar = validCrosshairPoint 
+          ? param.seriesData.get(candlestickSeries) 
+          : getLastBar(candlestickSeries);
+        
+        if (!bar) return;
+        
+        // Получаем данные для отображения в легенде
+        const time = bar.time;
+        const open = bar.open;
+        const high = bar.high;
+        const low = bar.low;
+        const close = bar.close;
+        
+        // Определяем, растет цена или падает
+        const isUp = close >= open;
+        const changePercent = ((close - open) / open * 100).toFixed(2);
+        const changeText = isUp ? `+${changePercent}%` : `${changePercent}%`;
+        const changeColor = isUp ? (isDarkMode ? '#4ade80' : '#22c55e') : (isDarkMode ? '#f87171' : '#ef4444');
+        
+        // Форматируем цены
+        const formattedDate = formatDate(time);
+        const formattedOpen = formatPrice(open);
+        const formattedHigh = formatPrice(high);
+        const formattedLow = formatPrice(low);
+        const formattedClose = formatPrice(close);
+        
+        // Устанавливаем HTML легенды
+        legendRef.current.innerHTML = `
+          <div style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">Bitcoin (BTC/USD)</div>
+          <div style="font-size: 14px; margin-bottom: 2px;">${formattedDate}</div>
+          <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+            <span>Открытие:</span>
+            <span style="font-weight: 500;">${formattedOpen}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+            <span>Максимум:</span>
+            <span style="font-weight: 500;">${formattedHigh}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+            <span>Минимум:</span>
+            <span style="font-weight: 500;">${formattedLow}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+            <span>Закрытие:</span>
+            <span style="font-weight: 500;">${formattedClose}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-top: 8px; font-weight: 500;">
+            <span>Изменение:</span>
+            <span style="color: ${changeColor};">${changeText}</span>
+          </div>
+        `;
+      };
+      
+      // Подписываемся на событие движения перекрестия
+      chart.subscribeCrosshairMove(updateLegend);
+      
+      // Инициализируем легенду с последней свечой
+      updateLegend(undefined);
       
       // Добавляем серию для прогнозных данных, если они есть
       if (forecastData && forecastData.length > 0 && showForecast) {
@@ -756,6 +873,13 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
       window.addEventListener('keyup', handleKeyUp);
       window.addEventListener('resize', handleResize);
 
+      // Добавляем обработчик события ухода курсора с графика
+      chartContainerRef.current.addEventListener('mouseleave', () => {
+        if (legendRef.current) {
+          updateLegend(undefined);
+        }
+      });
+
       return () => {
         window.removeEventListener('resize', handleResize);
         window.removeEventListener('keydown', handleKeyDown);
@@ -770,6 +894,11 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
           candlestickSeriesRef.current = null;
           forecastSeriesRef.current = null;
         }
+        if (legendRef.current && chartContainerRef.current) {
+          chartContainerRef.current.removeChild(legendRef.current);
+          legendRef.current = null;
+        }
+        chartContainerRef.current.removeEventListener('mouseleave', () => {});
       };
     }
   }, [chartData, forecastData, lunarEvents, events, timeframe, isDarkMode, isChartFocused, showForecast]);
@@ -971,7 +1100,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
       <div 
         ref={chartContainerRef} 
         data-testid="bitcoin-chart"
-        className="w-full h-[500px] bg-white dark:bg-gray-800 rounded-lg shadow-sm"
+        className="w-full h-[500px] bg-white dark:bg-gray-800 rounded-lg shadow-sm relative"
         tabIndex={0}
       />
     </div>
