@@ -15,7 +15,7 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://server:3001',
+        target: 'http://moonbit-server:3001',
         changeOrigin: true,
         secure: false,
       },
