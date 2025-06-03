@@ -5,7 +5,7 @@
 Проект разделен на клиентскую и серверную части, следуя принципам SPA архитектуры:
 
 - **Клиент (Frontend)**: React приложение с функциональными компонентами и хуками
-- **Сервер (Backend)**: Express.js API с чистой архитектурой
+- **Сервер (Backend)**: Express.js API на TypeScript с чистой архитектурой
 
 ## Организация кода
 
@@ -13,13 +13,13 @@
 
 1. **Форматы файлов**:
 
-   - **Серверная часть**: Все файлы используют JavaScript (.js)
-   - **Клиентская часть**: React компоненты используют JavaScript с JSX (.js)
+   - **Серверная часть**: Все файлы используют TypeScript (.ts)
+   - **Клиентская часть**: React компоненты используют JavaScript с JSX (.jsx) или TypeScript с TSX (.tsx)
 
 2. **Именование файлов**:
 
-   - **JavaScript файлы**: camelCase для всех файлов (services, utils, repositories)
-   - **React компоненты**: PascalCase для компонентных файлов
+   - **TypeScript файлы**: camelCase для утилит, хуков, репозиториев; PascalCase для классов и сервисов.
+   - **React компоненты**: PascalCase для компонентных файлов (.jsx/.tsx)
 
 3. **Именование переменных и функций**:
    - camelCase для переменных и функций
@@ -31,40 +31,46 @@
 ### Слои приложения
 
 1. **Контроллеры**: Обрабатывают HTTP-запросы и ответы
-2. **Сервисы**: Содержат бизнес-логику приложения
-3. **Репозитории**: Отвечают за доступ к данным (API, кэш, БД)
-4. **Модели**: Описывают структуры данных
+2. **Сервисы**: Содержат бизнес-логику приложения, используют IoC-контейнер для инъекции зависимостей.
+3. **Репозитории**: Отвечают за доступ к данным (API, кэш, БД), используются сервисами.
+4. **Типы**: Определения TypeScript для моделей данных и интерфейсов.
 5. **Утилиты**: Вспомогательные функции и инструменты
 
 ### Архитектурные принципы
 
 - **Чистая архитектура**: Разделение на слои с четкими зависимостями
-- **Инъекция зависимостей**: Использование синглтонов для сервисов
-- **Паттерн репозитория**: Абстракция доступа к данным
+- **Инъекция зависимостей**: Использование IoC-контейнера (InversifyJS) для управления зависимостями.
+- **Паттерн репозитория**: Абстракция доступа к данным (API, Redis)
+- **Принципы SOLID**: Применяются для улучшения структуры кода.
 
 ## Клиентская архитектура
 
 1. **Компоненты**: Переиспользуемые UI элементы
-2. **Сервисы**: Взаимодействие с API
+2. **Сервисы**: Взаимодействие с API (настроено проксирование через Vite в Dockerized среде)
 3. **Хуки**: Управление состоянием и бизнес-логикой
 4. **Утилиты**: Вспомогательные функции
 
+## Инфраструктура и среда разработки
+
+- **Docker Compose**: Используется для локальной разработки, оркестрирует клиентский, серверный и Redis контейнеры.
+- **Redis**: Сервис кэширования для серверной части, работает в отдельном Docker контейнере.
+- **Vite**: Сборщик клиента, настроен для проксирования API-запросов к серверу в Docker-сети.
+- **Jest**: Фреймворк для тестирования серверной части.
+- **Vitest**: Фреймворк для тестирования клиентской части.
+
 ## Будущие оптимизации
 
-1. **Кэширование данных**:
-
-   - Redis будет внедрен на следующих этапах разработки
-   - В настоящее время используется простое файловое кэширование
-
+1. **Полная интеграция Redis**: Внедрение во все сервисы для кэширования.
 2. **Отложенные интеграции**:
    - Сложные интеграции с внешними API будут внедряться поэтапно
    - Начальная разработка ведется с использованием моковых данных
+3. **WebSocket**: Будет использован для real-time данных позже
 
 ## Component relationships
 
 - **Контроллеры → Сервисы → Репозитории**: основной поток данных
-- **Сервисы могут использовать другие сервисы** для сложных операций
-- **DataSyncService** координирует обновление данных из разных источников
+- **Сервисы могут использовать другие сервисы** для сложных операций (через инъекцию зависимостей)
+- **DataSyncService** координирует обновление данных из разных источников (использует сервисы)
 
 # Системные паттерны MoonBit
 
@@ -74,31 +80,36 @@
 
 Приложение построено по принципам клиент-серверной архитектуры:
 
-- **Бэкенд**: REST API на Node.js + Express
-- **Фронтенд**: SPA на React
+- **Бэкенд**: REST API на Node.js + Express + TypeScript
+- **Фронтенд**: SPA на React + Vite
+- **Кэширование**: Redis
+- **Оркестрация локальной разработки**: Docker Compose
 
 ### Разделение ответственности
 
 - **Клиент**: отвечает за отображение данных и взаимодействие с пользователем
-- **Сервер**: отвечает за обработку запросов, получение данных из внешних API, валидацию и кэширование
+- **Сервер**: отвечает за обработку запросов, получение данных из внешних API, валидацию и кэширование (с использованием Redis)
 
 ## Ключевые паттерны проектирования
 
-### Серверная часть
+### Серверная часть (TypeScript)
 
 #### Сервисный слой (Service Layer)
 
 - Каждая функциональная область выделена в отдельный сервис (BitcoinService, MoonService, AstroService, EventsService)
 - Сервисы инкапсулируют всю бизнес-логику и взаимодействие с внешними API
-- Реализованы как синглтоны
+- Реализованы как классы с использованием декораторов InversifyJS для инъекции зависимостей (@injectable(), @inject())
 
-```javascript
-// Пример: Синглтон сервис
-class BitcoinService {
+```typescript
+// Пример: Сервис с инъекцией зависимостей
+@injectable()
+export class BitcoinService {
+  constructor(
+    @inject(TYPES.BitcoinRepository) private bitcoinRepository: IBitcoinRepository,
+    @inject(TYPES.Logger) private logger: ILogger
+  ) {}
   // Методы и свойства
 }
-
-module.exports = new BitcoinService();
 ```
 
 #### Фасад (Facade)
@@ -107,15 +118,21 @@ module.exports = new BitcoinService();
 - Скрывает сложность взаимодействия между различными компонентами
 - Предоставляет единую точку входа для синхронизации данных
 
-```javascript
+```typescript
 // Пример: Фасад для синхронизации данных
-async syncAll() {
-  await Promise.all([
-    this.syncBitcoinData(),
-    this.syncMoonData(),
-    this.syncAstroData(),
-    this.syncEventsData()
-  ]);
+@injectable()
+export class DataSyncService {
+  constructor(
+    @inject(TYPES.BitcoinService) private bitcoinService: IBitcoinService,
+    // ... другие сервисы
+  ) {}
+
+  async syncAll(): Promise<void> {
+    await Promise.all([
+      this.bitcoinService.updatePriceData(),
+      // ... вызовы других сервисов
+    ]);
+  }
 }
 ```
 
@@ -124,51 +141,63 @@ async syncAll() {
 - Обработка запросов через цепочку middleware (логирование, валидация, обработка ошибок)
 - Каждое middleware решает одну конкретную задачу
 
-```javascript
-// Пример: Цепочка middleware
-app.use(cors());
+```typescript
+// Пример: Цепочка middleware в Express
+app.use(cors(config.cors));
 app.use(express.json());
 app.use(requestLogger);
 // Маршруты
+app.use('/api', apiRoutes);
 app.use(notFoundHandler);
 app.use(errorHandler);
 ```
 
 #### Repository
 
-- Сервисы используют файловую систему как хранилище для кэширования данных
-- Абстрагирование работы с хранилищем через методы loadCache/saveCache
+- Репозитории отвечают за взаимодействие с источниками данных (внешние API, Redis)
+- Сервисы используют репозитории для получения и сохранения данных
+- Используются классы с инъекцией зависимостей
 
-```javascript
-// Пример: Repository паттерн для кэша
-loadCache(filePath, defaultValue) {
-  try {
-    if (fs.existsSync(filePath)) {
-      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    }
-  } catch (error) {
-    logger.error(`Ошибка при загрузке кэша`, { error });
+```typescript
+// Пример: Repository для Redis
+@injectable()
+export class RedisRepository {
+  private redisClient: Redis;
+
+  constructor(@inject(TYPES.RedisClient) redisClient: Redis) {
+    this.redisClient = redisClient;
   }
-  return defaultValue;
+
+  async getData(key: string): Promise<string | null> {
+    return this.redisClient.get(key);
+  }
+
+  async setData(key: string, value: string, ttl?: number): Promise<void> {
+    if (ttl) {
+      await this.redisClient.setex(key, ttl, value);
+    } else {
+      await this.redisClient.set(key, value);
+    }
+  }
 }
 ```
 
-### Клиентская часть
+### Клиентская часть (React, Vite, Docker)
 
 #### Компонентная архитектура
 
-- UI разделен на переиспользуемые компоненты
+- UI разделен на переиспользуемые компоненты (функциональные, с хуками)
 - Компоненты имеют четкую ответственность и минимальную связанность
 
 #### Контейнер / Презентационные компоненты
 
-- Компоненты разделены на контейнеры (содержат логику) и презентационные (отображение)
+- Компоненты разделены на контейнеры (содержат логику, используют хуки для данных/API) и презентационные (отображение данных, получают через props)
 - Dashboard является контейнером, внутри которого находятся презентационные компоненты
 
 #### Композиция компонентов
 
 - Построение сложных компонентов через композицию более простых
-- Использование children для гибкой структуры
+- Использование `children` для гибкой структуры
 
 ```jsx
 // Пример: Композиция через children
@@ -182,16 +211,16 @@ loadCache(filePath, defaultValue) {
 
 #### Хуки (Hook Pattern)
 
-- Использование React-хуков для управления состоянием и побочными эффектами
-- Создание пользовательских хуков для повторного использования логики
+- Использование React-хуков (`useState`, `useEffect`, `useContext`)
+- Создание пользовательских хуков для повторного использования логики (`useBitcoinPrice`, `useUpcomingEvents`)
 
-```jsx
-// Пример: Пользовательский хук
-function useBitcoinPrice(currency = 'usd') {
-  const [price, setPrice] = useState(null);
+```typescript
+// Пример: Пользовательский хук на TypeScript
+function useBitcoinPrice(currency: string = 'usd'): IBitcoinPrice | null {
+  const [price, setPrice] = useState<IBitcoinPrice | null>(null);
 
   useEffect(() => {
-    // Логика получения цены
+    // Логика получения цены через API сервис
   }, [currency]);
 
   return price;
@@ -200,109 +229,62 @@ function useBitcoinPrice(currency = 'usd') {
 
 ## Взаимодействие между компонентами
 
-### Серверная часть
+### Серверная часть (TypeScript, Docker)
 
 #### API-маршруты и контроллеры
 
-```
-Клиент -> API маршруты -> Контроллеры -> Сервисы -> Внешние API/Кэш
-```
+```mermaid
+graph LR
+    Client(Клиент) --> |HTTP запросы| Nginx(Обратный прокси / Vite Dev Server Прокси)
+    Nginx --> |Перенаправление /api| DockerNetwork(Docker Network)
+    DockerNetwork --> Server(moonbit-server)
+    Server --> |Express Router| API_Routes(Маршруты API)
+    API_Routes --> Controllers(Контроллеры)
+    Controllers --> Services(Сервисы)
+    Services --> Repositories(Репозитории)
+    Repositories --> |Внешние API| ExternalAPI(CoinGecko, FarmSense)
+    Repositories --> |Кэш| Redis(Redis Container)
+    Redis <--> Services
+    Services --> Services # Сервисы могут взаимодействовать друг с другом
 
-#### Контроллеры
+    subgraph Server_Internal [Серверная часть в Docker]
+        API_Routes
+        Controllers
+        Services
+        Repositories
+    end
 
-- Контроллеры выделены в отдельные файлы в директории `controllers`
-- Реализуют обработку запросов, валидацию данных и формирование ответа
-- Реализованы как синглтоны
-- Логика маршрутизации отделена от бизнес-логики
-
-```javascript
-// Пример: Контроллер как синглтон
-class BitcoinController {
-  async getCurrentPrice(req, res, next) {
-    try {
-      const { currency } = req.query;
-      const priceData = bitcoinService.getCurrentPrice(currency);
-      // Обработка и валидация данных
-      res.json(validatedData);
-    } catch (error) {
-      logger.error('Ошибка при получении цены биткоина', { error: error.message });
-      next(error);
-    }
-  }
-}
-
-module.exports = new BitcoinController();
+    subgraph Docker_Compose [Docker Compose]
+        Client
+        Server_Internal
+        Redis
+        DockerNetwork
+    end
 ```
 
 #### Фоновая синхронизация данных
 
-```
-DataSyncService -> Отдельные сервисы -> Внешние API -> Кэш
+```mermaid
+graph LR
+    DataSyncService(DataSyncService) --> Services(Сервисы)
+    Services --> Repositories(Репозитории)
+    Repositories --> ExternalAPI(Внешние API)
+    Repositories --> Redis(Redis Кэш)
 ```
 
-### Клиентская часть
+### Клиентская часть (React, Vite, Docker)
 
 #### Получение и отображение данных
 
+```mermaid
+graph LR
+    Components(Компоненты React) --> Hooks(Хуки)
+    Hooks --> Services(Сервисы API клиента)
+    Services --> |HTTP запросы к /api| ViteProxy(Vite Dev Server Proxy)
+    ViteProxy --> |Перенаправление к moonbit-server| DockerNetwork(Docker Network)
+    DockerNetwork --> Server(moonbit-server API)
+    Server --> |Ответ| ViteProxy
+    ViteProxy --> |Ответ| Services
+    Services --> Hooks
+    Hooks --> Components
 ```
-API -> Сервисы React -> Контейнеры -> Презентационные компоненты
-```
-
-#### Обработка ошибок
-
-```
-Компоненты -> ErrorBoundary -> Отображение ошибки/Fallback UI
-```
-
-## Паттерны доступа к данным
-
-### Кэширование
-
-- Стратегия TTL (Time-To-Live) с разной длительностью для разных типов данных
-- Фоновое обновление кэша при истечении срока действия
-- Возврат кэшированных данных при ошибках получения новых
-
-### Lazy Loading
-
-- Отложенная загрузка некритичных данных на клиенте
-- Использование Suspense и ErrorBoundary для управления загрузкой
-
-### Оптимистичные обновления
-
-- Обновление UI до получения ответа от сервера
-- Откат при ошибке на стороне сервера
-
-## Паттерны обработки ошибок
-
-### Централизованная обработка ошибок на сервере
-
-- Middleware для обработки ошибок
-- Логирование ошибок с контекстом
-- Структурированный ответ клиенту
-
-### Граница ошибок на клиенте (Error Boundary)
-
-- Предотвращение падения всего приложения при ошибке в компоненте
-- Fallback UI для компонентов с ошибками
-
-```jsx
-// Пример: Использование ErrorBoundary
-<ErrorBoundary fallback={<ErrorMessage />}>
-  <ComponentThatMightFail />
-</ErrorBoundary>
-```
-
-## Общие принципы и соглашения
-
-### Именование
-
-- camelCase для переменных и функций в JavaScript
-- PascalCase для компонентов React и классов
-- kebab-case для CSS-классов и файлов CSS
-- UPPER_CASE для констант
-
-### Структура файлов
-
-- Группировка по функциональности (feature-based)
-- Разделение бизнес-логики и представления
-- Совместное размещение тестов и компонентов
