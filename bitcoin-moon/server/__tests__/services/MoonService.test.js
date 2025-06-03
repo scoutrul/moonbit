@@ -1,8 +1,13 @@
-const moonService = require('../../src/services/MoonService');
-const moonRepository = require('../../src/repositories/MoonRepository');
+import MoonService from '../../src/services/MoonService.js';
+import moonRepository from '../../src/repositories/MoonRepository.js';
 
-// Мокаем модуль репозитория
-jest.mock('../../src/repositories/MoonRepository');
+// Mock the repository
+jest.mock('../../src/repositories/MoonRepository.js', () => ({
+  fetchMoonPhases: jest.fn(),
+  getPhasesCache: jest.fn(),
+  calculatePhase: jest.fn(),
+  getPhaseName: jest.fn()
+}));
 
 // Мокаем модуль логирования
 jest.mock('../../src/utils/logger', () => ({
