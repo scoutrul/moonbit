@@ -21,6 +21,19 @@ router.get('/phase', (req, res) => {
   });
 });
 
+router.get('/current', (req, res) => {
+  // Добавляем endpoint /current для совместимости с клиентом
+  res.json({
+    date: new Date().toISOString(),
+    phase: 0.5,
+    phaseName: 'Полнолуние',
+    illumination: 100,
+    age_days: 15,
+    next_new_moon: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+    next_full_moon: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+  });
+});
+
 router.get('/phases', (req, res) => {
   const startDate = req.query.startDate || new Date().toISOString();
   const endDate = req.query.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();

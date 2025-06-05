@@ -1,7 +1,7 @@
 /**
  * Сервис для работы с данными о событиях
  */
-import api from './api';
+import api from './api-simple';
 import { generateMockEvents } from '../utils/mockDataGenerator';
 
 // Кэш событий для использования в разных компонентах
@@ -312,7 +312,7 @@ class EventsService {
    */
   async getEconomicEvents(limit = 10) {
     try {
-      const response = await api.get('/economic/upcoming', {
+      const response = await api.get('/events/economic/upcoming', {
         params: { limit }
       });
       return response.data || [];

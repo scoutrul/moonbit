@@ -7,6 +7,32 @@ const router = express.Router();
 const bitcoinController = container.get<BitcoinController>(TYPES.BitcoinController);
 
 /**
+ * @route GET /api/bitcoin
+ * @description Информация о Bitcoin API endpoints
+ * @access Public
+ */
+router.get('/', (req: express.Request, res: express.Response) => {
+  res.json({
+    service: 'Bitcoin API',
+    version: '1.0.0',
+    description: 'API для получения данных о биткоине',
+    endpoints: {
+      '/price': 'Текущая цена биткоина',
+      '/current': 'Текущая цена биткоина (алиас)',
+      '/history': 'Исторические данные (параметры: days, currency)',
+      '/analysis': 'Анализ цены биткоина',
+      '/candles': 'Данные свечей с Bybit (параметры: timeframe, limit)'
+    },
+    examples: {
+      current_price: '/api/bitcoin/price',
+      history_30_days: '/api/bitcoin/history?days=30&currency=usd',
+      price_analysis: '/api/bitcoin/analysis',
+      daily_candles: '/api/bitcoin/candles?timeframe=1d&limit=100'
+    }
+  });
+});
+
+/**
  * @route GET /api/bitcoin/price
  * @description Получение текущей цены биткоина
  * @access Public

@@ -52,6 +52,21 @@ router.get('/economic/upcoming', (req, res) => {
 });
 
 /**
+ * @route GET /api/events/recent
+ * @description Получить недавние события
+ * @param {number} limit Количество событий (по умолчанию 10)
+ * @access Public
+ */
+router.get('/recent', (req, res) => {
+  const limit = parseInt(req.query.limit as string) || 10;
+  
+  // Генерируем недавние события
+  const events = generateMockRecentEvents(limit);
+  
+  res.json(events);
+});
+
+/**
  * Генерирует мок-данные для тестирования
  * @param {number} days Количество дней
  * @returns {Array} Массив событий
@@ -114,6 +129,40 @@ function generateMockEconomicEvents(limit: number) {
   }
   
   return events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+}
+
+/**
+ * Генерирует мок-данные недавних событий
+ * @param {number} limit Количество событий
+ * @returns {Array} Массив недавних событий
+ */
+function generateMockRecentEvents(limit: number) {
+  const events = [];
+  const now = new Date();
+  
+  const recentEventTypes = [
+    'Новолуние завершилось',
+    'Полнолуние наблюдалось',
+    'Биткоин достиг пика',
+    'Фаза луны изменилась',
+    'Астрономическое событие произошло'
+  ];
+  
+  for (let i = 0; i < limit; i++) {
+    const date = new Date(now);
+    date.setDate(date.getDate() - Math.floor(Math.random() * 7)); // События за последние 7 дней
+    
+    events.push({
+      id: `recent-${i}`,
+      date: date.toISOString(),
+      title: recentEventTypes[i % recentEventTypes.length],
+      description: `Недавнее событие #${i}`,
+      type: i % 2 === 0 ? 'moon' : 'crypto',
+      icon: i % 2 === 0 ? '🌙' : '₿'
+    });
+  }
+  
+  return events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
 export default router; 

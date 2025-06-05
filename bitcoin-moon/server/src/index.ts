@@ -10,6 +10,7 @@ import bitcoinRoutes from './routes/bitcoin';
 import moonRoutes from './routes/moon';
 import astroRoutes from './routes/astro';
 import eventsRoutes from './routes/events';
+import healthRoutes from './routes/health';
 
 // Получаем зависимости из контейнера
 const config = container.get<IConfig>(TYPES.Config);
@@ -31,10 +32,28 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Регистрируем маршруты
+app.use('/api/health', healthRoutes);
 app.use('/api/bitcoin', bitcoinRoutes);
 app.use('/api/moon', moonRoutes);
 app.use('/api/astro', astroRoutes);
 app.use('/api/events', eventsRoutes);
+
+// Добавляем корневой маршрут для базовой проверки
+app.get('/', (req: express.Request, res: express.Response) => {
+  res.json({
+    name: 'MoonBit API',
+    version: '1.0.0',
+    status: 'running',
+    timestamp: new Date().toISOString(),
+    endpoints: [
+      '/api/health',
+      '/api/bitcoin',
+      '/api/moon', 
+      '/api/astro',
+      '/api/events'
+    ]
+  });
+});
 
 // Обработка ошибок
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

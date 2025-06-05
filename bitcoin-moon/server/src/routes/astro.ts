@@ -4,7 +4,41 @@ import { TYPES } from '../types/types';
 
 const router = express.Router();
 
-// Пока заглушка для маршрутов астрономических данных
+/**
+ * @route GET /api/astro/current
+ * @description Получить текущие астрономические данные
+ * @access Public
+ */
+router.get('/current', (req, res) => {
+  res.json({
+    date: new Date().toISOString(),
+    sun: {
+      phase: 'day',
+      elevation: 45,
+      azimuth: 180
+    },
+    mercury: {
+      phase: 'normal',
+      retrograde: false
+    },
+    venus: {
+      phase: 'normal',
+      retrograde: false
+    },
+    mars: {
+      phase: 'normal',
+      retrograde: false
+    }
+  });
+});
+
+/**
+ * @route GET /api/astro/events
+ * @description Получить астрономические события
+ * @param {string} startDate - Начальная дата
+ * @param {string} endDate - Конечная дата
+ * @access Public
+ */
 router.get('/events', (req, res) => {
   const days = parseInt(req.query.days as string) || 30;
   

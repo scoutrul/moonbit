@@ -1,7 +1,7 @@
 /**
  * Сервис для работы с данными о биткоине
  */
-import api from './api';
+import api from './api-simple';
 
 // Кэш для текущей цены
 let currentPriceCache = null;

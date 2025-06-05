@@ -212,27 +212,6 @@ api.interceptors.response.use(response => {
   return Promise.reject(error);
 });
 
-// Добавляем обертку для GET запросов с дедупликацией
-const originalGet = api.get;
-api.get = function(url, config = {}) {
-  const requestKey = createRequestKey({ method: 'get', url, params: config.params });
-  
-  // Создаем промис и добавляем его в pending requests
-  const requestPromise = originalGet.call(this, url, config);
-  
-  // Добавляем в pending requests только если это GET запрос
-  pendingRequests.set(requestKey, requestPromise);
-  
-  // Удаляем из pending после завершения
-  requestPromise.finally(() => {
-    setTimeout(() => {
-      pendingRequests.delete(requestKey);
-    }, 1000);
-  });
-  
-  return requestPromise;
-};
-
 // Добавляем метод для очистки кэша
 api.clearCache = () => {
   requestCache.clear();
