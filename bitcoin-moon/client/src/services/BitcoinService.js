@@ -86,16 +86,11 @@ class BitcoinService {
    */
   async getCandlestickData(timeframe = '1d') {
     try {
+      // Используем данные свечей из Bybit API
       const response = await api.get('/bitcoin/candles', { params: { timeframe } });
       
-      return response.data.map((candle) => ({
-        time: new Date(candle.time).getTime() / 1000,
-        open: Number(candle.open),
-        high: Number(candle.high),
-        low: Number(candle.low),
-        close: Number(candle.close),
-        volume: Number(candle.volume || 0),
-      }));
+      // Данные уже в правильном формате, просто возвращаем их
+      return response.data;
     } catch (error) {
       console.error('Error fetching candlestick data:', error);
       

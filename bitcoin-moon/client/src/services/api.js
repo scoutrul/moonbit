@@ -4,11 +4,19 @@
 // @ts-nocheck
 import axios from 'axios';
 
-// Определяем базовый URL для API - при деплое используем переменные окружения
-let baseURL = '/api'; // По умолчанию относительный путь для локальной разработки
+// Определяем базовый URL для API - принудительно используем локальный путь для разработки
+let baseURL = '/api'; // Относительный путь для локальной разработки
 
-// Проверяем window.ENV для production или import.meta.env для dev
-if (typeof window !== 'undefined' && window.ENV && window.ENV.VITE_API_URL) {
+// Проверяем, что мы в режиме разработки
+const isDev = process.env.NODE_ENV !== 'production' || import.meta.env?.MODE !== 'production';
+
+// В режиме разработки всегда используем локальный путь
+if (isDev) {
+  baseURL = '/api';
+  console.log('Режим разработки: используется локальный API');
+} 
+// В производственном режиме используем переменные окружения
+else if (typeof window !== 'undefined' && window.ENV && window.ENV.VITE_API_URL) {
   baseURL = window.ENV.VITE_API_URL;
 } else if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) {
   baseURL = import.meta.env.VITE_API_URL;
