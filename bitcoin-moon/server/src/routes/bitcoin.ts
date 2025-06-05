@@ -14,6 +14,13 @@ const bitcoinController = container.get<BitcoinController>(TYPES.BitcoinControll
 router.get('/price', bitcoinController.getCurrentPrice.bind(bitcoinController));
 
 /**
+ * @route GET /api/bitcoin/current
+ * @description Получение текущей цены биткоина (алиас для /price)
+ * @access Public
+ */
+router.get('/current', bitcoinController.getCurrentPrice.bind(bitcoinController));
+
+/**
  * @route GET /api/bitcoin/history
  * @description Получение исторических данных о цене биткоина
  * @param {string} days - Количество дней для исторических данных (опционально, по умолчанию 30)

@@ -3,6 +3,19 @@
  */
 import api from './api';
 
+// Кэш для текущей цены
+let currentPriceCache = null;
+let currentPriceCacheTimestamp = 0;
+const CURRENT_PRICE_CACHE_TTL = 30 * 1000; // 30 секунд
+
+// Активные запросы к API для предотвращения дублирования
+const activeRequests = new Map();
+
+// Счетчик запросов и ошибок для мониторинга
+let requestCounter = 0;
+let errorCounter = 0;
+let successCounter = 0;
+
 /**
  * Класс для работы с данными о биткоине
  */
@@ -13,27 +26,97 @@ class BitcoinService {
    * @returns {Promise<Object>} Объект с текущей ценой и изменениями
    */
   async getCurrentPrice(currency = 'usd') {
-    try {
-      const response = await api.get('/bitcoin/current', { params: { currency } });
-      return {
-        price: Number(response.data.price),
-        currency: response.data.currency,
-        last_updated: response.data.last_updated,
-        change_24h: Number(response.data.change_24h),
-        change_percentage_24h: Number(response.data.change_percentage_24h),
-      };
-    } catch (error) {
-      console.error('Error fetching current bitcoin price:', error);
+    requestCounter++;
+    
+    // Проверяем кэш
+    const now = Date.now();
+    if (currentPriceCache && (now - currentPriceCacheTimestamp) < CURRENT_PRICE_CACHE_TTL) {
+      console.log(`[${requestCounter}] Возвращаем цену биткоина из кэша`);
+      return currentPriceCache;
+    }
+    
+    // Создаем ключ для кэша активных запросов
+    const requestKey = `current-price-${currency}`;
+    
+    // Проверяем, нет ли уже активного запроса
+    if (activeRequests.has(requestKey)) {
+      console.log(`[${requestCounter}] Ожидаем завершения существующего запроса на текущую цену`);
+      return activeRequests.get(requestKey);
+    }
+    
+    // Создаем промис для запроса
+    const requestPromise = (async () => {
+      const maxRetries = 3;
+      let lastError = null;
       
-      // В случае ошибки возвращаем резервные данные
-      return {
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`[${requestCounter}] Запрос текущей цены биткоина (попытка ${attempt}/${maxRetries})`);
+          
+          const response = await api.get('/bitcoin/current', { 
+            params: { currency },
+            timeout: 10000 // 10 секунд таймаут
+          });
+          
+          const priceData = {
+            price: Number(response.data.price),
+            currency: response.data.currency,
+            last_updated: response.data.last_updated,
+            change_24h: Number(response.data.change_24h),
+            change_percentage_24h: Number(response.data.change_percentage_24h),
+          };
+          
+          // Сохраняем в кэш
+          currentPriceCache = priceData;
+          currentPriceCacheTimestamp = now;
+          
+          successCounter++;
+          console.log(`[${requestCounter}] Успешно получена цена биткоина (успехов ${successCounter}/${requestCounter})`);
+          
+          return priceData;
+        } catch (error) {
+          lastError = error;
+          errorCounter++;
+          console.error(`[${requestCounter}] Ошибка при получении цены биткоина (попытка ${attempt}/${maxRetries}):`, error.message);
+          
+          if (attempt < maxRetries) {
+            // Ждем перед повторной попыткой
+            const delay = attempt * 1000; // Увеличивающаяся задержка
+            console.log(`[${requestCounter}] Ожидание ${delay}мс перед повторной попыткой...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+        }
+      }
+      
+      // Если все попытки неудачны, возвращаем резервные данные
+      console.error(`[${requestCounter}] Все попытки неудачны, используем резервные данные (ошибок ${errorCounter}/${requestCounter})`);
+      
+      const fallbackData = {
         price: 50000,
         currency: currency,
         last_updated: new Date().toISOString(),
         change_24h: 500,
         change_percentage_24h: 1.2,
       };
-    }
+      
+      // Кэшируем резервные данные на короткое время
+      currentPriceCache = fallbackData;
+      currentPriceCacheTimestamp = now;
+      
+      return fallbackData;
+    })();
+    
+    // Добавляем запрос в активные
+    activeRequests.set(requestKey, requestPromise);
+    
+    // Удаляем запрос из активных после завершения
+    requestPromise.finally(() => {
+      setTimeout(() => {
+        activeRequests.delete(requestKey);
+      }, 1000);
+    });
+    
+    return requestPromise;
   }
 
   /**
@@ -44,7 +127,10 @@ class BitcoinService {
    */
   async getHistoricalData(currency = 'usd', days = 30) {
     try {
-      const response = await api.get('/bitcoin/history', { params: { currency, days } });
+      const response = await api.get('/bitcoin/history', { 
+        params: { currency, days },
+        timeout: 15000 // 15 секунд таймаут
+      });
       return {
         currency,
         days,
@@ -87,7 +173,10 @@ class BitcoinService {
   async getCandlestickData(timeframe = '1d') {
     try {
       // Используем данные свечей из Bybit API
-      const response = await api.get('/bitcoin/candles', { params: { timeframe } });
+      const response = await api.get('/bitcoin/candles', { 
+        params: { timeframe },
+        timeout: 15000 // 15 секунд таймаут
+      });
       
       // Данные уже в правильном формате, просто возвращаем их
       return response.data;
@@ -156,6 +245,30 @@ class BitcoinService {
       console.error('Error fetching all timeframes data:', error);
       return {};
     }
+  }
+  
+  /**
+   * Очищает кэш (для отладки)
+   */
+  clearCache() {
+    currentPriceCache = null;
+    currentPriceCacheTimestamp = 0;
+    activeRequests.clear();
+    console.log('Кэш BitcoinService очищен');
+  }
+  
+  /**
+   * Получает статистику запросов (для отладки)
+   */
+  getStats() {
+    return {
+      totalRequests: requestCounter,
+      successfulRequests: successCounter,
+      failedRequests: errorCounter,
+      successRate: requestCounter > 0 ? Math.round(successCounter / requestCounter * 100) : 0,
+      activeRequests: activeRequests.size,
+      cacheValid: currentPriceCache && (Date.now() - currentPriceCacheTimestamp) < CURRENT_PRICE_CACHE_TTL
+    };
   }
 }
 
