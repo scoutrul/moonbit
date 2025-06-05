@@ -55,7 +55,11 @@ class EventsService {
       ];
       
       // Сортируем по дате
-      const sortedEvents = allEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+      const sortedEvents = allEvents.sort((a, b) => {
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        return dateA - dateB;
+      });
       
       // Сохраняем в кэш
       eventsCache = sortedEvents;
@@ -93,7 +97,11 @@ class EventsService {
       const events = response.data;
       
       // Сортируем по дате и ограничиваем количество
-      return events.sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, limit);
+      return events.sort((a, b) => {
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        return dateA - dateB;
+      }).slice(0, limit);
     } catch (error) {
       console.error('Ошибка при получении предстоящих событий:', error);
       
@@ -213,8 +221,8 @@ class EventsService {
       
       // Сортируем по дате
       return allEvents.sort((a, b) => {
-        const dateA = new Date(a.date || a.time * 1000);
-        const dateB = new Date(b.date || b.time * 1000);
+        const dateA = new Date(a.date || a.time * 1000).getTime();
+        const dateB = new Date(b.date || b.time * 1000).getTime();
         return dateA - dateB;
       });
     } catch (error) {
@@ -248,7 +256,11 @@ class EventsService {
       }
       
       eventsCache.push(newEvent);
-      eventsCache.sort((a, b) => new Date(a.date) - new Date(b.date));
+      eventsCache.sort((a, b) => {
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        return dateA - dateB;
+      });
       
       return newEvent;
     } catch (error) {
@@ -267,26 +279,43 @@ class EventsService {
       }
       
       eventsCache.push(newEvent);
-      eventsCache.sort((a, b) => new Date(a.date) - new Date(b.date));
+      eventsCache.sort((a, b) => {
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        return dateA - dateB;
+      });
       
       return newEvent;
     }
   }
 
   /**
-   * Получает лунные события с сервера
-   * @param {number} days - Количество дней
-   * @returns {Promise<Array>} Массив лунных событий
+   * Получает предстоящие лунные события
+   * @param {number} days - количество дней для поиска событий
+   * @returns {Promise<Array>} - массив предстоящих лунных событий
    */
   async getUpcomingLunarEvents(days = 30) {
     try {
+      console.log(`Запрос предстоящих лунных событий на ${days} дней`);
+      
+      // Используем локальный API
       const response = await api.get('/moon/upcoming-events', {
         params: { days }
       });
-      return response.data;
+      
+      console.log(`Получено предстоящих лунных событий: ${response.data.length}`);
+      
+      return response.data || [];
     } catch (error) {
-      console.error('Ошибка при получении лунных событий:', error);
-      return [];
+      console.error('Ошибка при получении предстоящих лунных событий:', error);
+      
+      // В случае ошибки создаем диапазон дат и получаем все события
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + days);
+      
+      // Используем метод получения всех лунных событий
+      return this.getLunarEvents(startDate, endDate);
     }
   }
 
@@ -337,39 +366,37 @@ class EventsService {
   }
 
   /**
-   * Получает лунные события для указанного периода
+   * Получает лунные события на указанный период
    * @param {Date} startDate - начальная дата
    * @param {Date} endDate - конечная дата
    * @returns {Promise<Array>} - массив лунных событий
    */
   async getLunarEvents(startDate, endDate) {
     try {
+      if (!startDate || !endDate) {
+        throw new Error('Необходимо указать начальную и конечную даты');
+      }
+
       // Форматируем даты для запроса
       const start = startDate.toISOString();
       const end = endDate.toISOString();
       
-      console.log(`EventsService: запрашиваем лунные события с ${start} по ${end}`);
+      console.log(`Запрос лунных событий в диапазоне: ${start} - ${end}`);
       
+      // Используем локальный API вместо удаленного
       const response = await api.get('/moon/historical-events', {
         params: { startDate: start, endDate: end }
       });
       
-      // Если получены пустые данные, возвращаем мок-данные
-      if (!response.data || response.data.length === 0) {
-        console.warn('EventsService: получены пустые данные от API, используем мок-данные');
-        const mockData = this._getMockLunarEvents(startDate, endDate);
-        console.log(`EventsService: сгенерировано ${mockData.length} мок-событий`);
-        return mockData;
-      }
+      console.log(`Получено лунных событий: ${response.data.length}`);
       
-      console.log(`EventsService: получено ${response.data.length} событий от API`);
-      return response.data;
+      return response.data || [];
     } catch (error) {
       console.error('Ошибка при получении лунных событий:', error);
-      // В случае ошибки генерируем мок-данные
-      const mockData = this._getMockLunarEvents(startDate, endDate);
-      console.log(`EventsService: после ошибки сгенерировано ${mockData.length} мок-событий`);
-      return mockData;
+      
+      // В случае ошибки используем мок-данные
+      console.warn('Используем мок-данные для лунных событий');
+      return this._getMockLunarEvents(startDate, endDate);
     }
   }
   
@@ -392,7 +419,7 @@ class EventsService {
     console.log(`_getMockLunarEvents: генерация событий с ${startDate.toISOString()} по ${endDate.toISOString()}`);
     
     // Вычисляем разницу в днях
-    const diffTime = Math.abs(endDate - startDate);
+    const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     console.log(`_getMockLunarEvents: разница в днях: ${diffDays}`);
     
@@ -461,7 +488,11 @@ class EventsService {
       return eventDate >= startDate && eventDate <= endDate;
     });
     
-    const sortedEvents = filteredEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+    const sortedEvents = filteredEvents.sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      return dateA - dateB;
+    });
     console.log(`_getMockLunarEvents: сгенерировано ${sortedEvents.length} лунных событий`);
     
     return sortedEvents;
@@ -516,21 +547,21 @@ class EventsService {
     // Генерируем несколько астрономических событий
     const astroEvents = [
       {
-        date: new Date(startDate.getTime() + (endDate - startDate) * 0.2).toISOString(),
+        date: new Date(startDate.getTime() + (endDate.getTime() - startDate.getTime()) * 0.2).toISOString(),
         type: 'solar_eclipse',
         title: 'Солнечное затмение',
         description: 'Солнечное затмение',
         icon: '☀️'
       },
       {
-        date: new Date(startDate.getTime() + (endDate - startDate) * 0.7).toISOString(),
+        date: new Date(startDate.getTime() + (endDate.getTime() - startDate.getTime()) * 0.7).toISOString(),
         type: 'lunar_eclipse',
         title: 'Лунное затмение',
         description: 'Лунное затмение',
         icon: '🌙'
       },
       {
-        date: new Date(startDate.getTime() + (endDate - startDate) * 0.4).toISOString(),
+        date: new Date(startDate.getTime() + (endDate.getTime() - startDate.getTime()) * 0.4).toISOString(),
         type: 'astro',
         title: 'Равноденствие',
         description: 'Весеннее/осеннее равноденствие',
@@ -541,21 +572,21 @@ class EventsService {
     // Генерируем несколько экономических событий
     const economicEvents = [
       {
-        date: new Date(startDate.getTime() + (endDate - startDate) * 0.3).toISOString(),
+        date: new Date(startDate.getTime() + (endDate.getTime() - startDate.getTime()) * 0.3).toISOString(),
         type: 'economic',
         title: 'Заседание ФРС',
         description: 'Решение по процентной ставке',
         icon: '🏦'
       },
       {
-        date: new Date(startDate.getTime() + (endDate - startDate) * 0.6).toISOString(),
+        date: new Date(startDate.getTime() + (endDate.getTime() - startDate.getTime()) * 0.6).toISOString(),
         type: 'economic',
         title: 'Отчет по инфляции',
         description: 'Данные по индексу потребительских цен',
         icon: '📊'
       },
       {
-        date: new Date(startDate.getTime() + (endDate - startDate) * 0.9).toISOString(),
+        date: new Date(startDate.getTime() + (endDate.getTime() - startDate.getTime()) * 0.9).toISOString(),
         type: 'economic',
         title: 'Отчет по занятости',
         description: 'Данные по рынку труда',
@@ -567,7 +598,11 @@ class EventsService {
     events.push(...astroEvents, ...economicEvents);
     
     // Сортируем по дате
-    return events.sort((a, b) => new Date(a.date) - new Date(b.date));
+    return events.sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      return dateA - dateB;
+    });
   }
 }
 
