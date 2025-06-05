@@ -4,6 +4,7 @@ import path from 'path';
 import { injectable, inject } from 'inversify';
 import { TYPES } from '../types/types';
 import { ILogger, IConfig, IBitcoinService, IBitcoinPriceResponse, IBitcoinHistoricalResponse } from '../types/interfaces';
+import crypto from 'crypto';
 
 /**
  * Сервис для работы с данными о биткоине
@@ -15,6 +16,9 @@ export class BitcoinService implements IBitcoinService {
   private priceData: IBitcoinPriceResponse;
   private historicalData: IBitcoinHistoricalResponse;
   private lastUpdated: Date;
+  private bybitApiKey: string = 'yeQUyZ3dZUpaapHoXG';
+  private bybitApiSecret: string = 'LJEIF5s68zTBENsW0XJaBUn0Ou1C1ZulNbZS';
+  private bybitApiUrl: string = 'https://api.bybit.com';
 
   constructor(
     @inject(TYPES.Logger) private logger: ILogger,
@@ -111,9 +115,8 @@ export class BitcoinService implements IBitcoinService {
     try {
       this.logger.info('BitcoinService: обновление данных о цене биткоина');
       
-      // В реальном приложении здесь будет запрос к API
-      // Для примера используем моковые данные
-      const response = await this.fetchCurrentPrice();
+      // Используем данные с Bybit API
+      const response = await this.fetchBybitPrice();
       
       this.priceData = {
         usd: {
@@ -222,6 +225,193 @@ export class BitcoinService implements IBitcoinService {
         change_24h: 0
       };
     }
+  }
+
+  /**
+   * Получает данные о цене биткоина с Bybit
+   * @returns {Promise<{price: number, change_24h: number}>} Данные о цене
+   */
+  private async fetchBybitPrice(): Promise<{price: number, change_24h: number}> {
+    try {
+      this.logger.info('BitcoinService: запрос данных о цене биткоина с Bybit API');
+      
+      // Подготовка заголовков для аутентификации
+      const timestamp = Date.now().toString();
+      const recvWindow = '5000';
+      
+      // Создание подписи
+      const queryString = `api_key=${this.bybitApiKey}&recv_window=${recvWindow}&timestamp=${timestamp}`;
+      const signature = crypto
+        .createHmac('sha256', this.bybitApiSecret)
+        .update(queryString)
+        .digest('hex');
+      
+      // Настройка заголовков
+      const headers = {
+        'X-BAPI-API-KEY': this.bybitApiKey,
+        'X-BAPI-TIMESTAMP': timestamp,
+        'X-BAPI-RECV-WINDOW': recvWindow,
+        'X-BAPI-SIGN': signature
+      };
+      
+      // Получение тикера BTCUSDT
+      const response = await axios.get(`${this.bybitApiUrl}/v5/market/tickers`, {
+        params: {
+          category: 'spot',
+          symbol: 'BTCUSDT'
+        },
+        headers
+      });
+      
+      if (response.data && response.data.result && response.data.result.list && response.data.result.list.length > 0) {
+        const btcData = response.data.result.list[0];
+        const price = parseFloat(btcData.lastPrice);
+        const prevPrice = parseFloat(btcData.prevPrice24h);
+        const change_24h = price - prevPrice;
+        
+        this.logger.debug('BitcoinService: получены данные о цене биткоина с Bybit', { price, change_24h });
+        
+        return {
+          price,
+          change_24h
+        };
+      } else {
+        throw new Error('Некорректный ответ от Bybit API');
+      }
+    } catch (error) {
+      this.logger.error('BitcoinService: ошибка при получении данных с Bybit', { error });
+      // Возвращаем резервные данные в случае ошибки
+      return await this.fetchCurrentPrice();
+    }
+  }
+
+  /**
+   * Получает исторические данные о цене биткоина с Bybit
+   * @param {string} timeframe - Временной интервал (1m, 5m, 15m, 30m, 1h, 4h, 1d, 1w)
+   * @param {number} limit - Количество свечей
+   * @returns {Promise<Array<{time: number, open: number, high: number, low: number, close: number, volume: number}>>} 
+   */
+  public async getBybitCandlestickData(timeframe: string = '1d', limit: number = 200): Promise<Array<any>> {
+    try {
+      this.logger.info(`BitcoinService: запрос данных свечей с Bybit API, таймфрейм: ${timeframe}`);
+      
+      // Подготовка заголовков для аутентификации
+      const timestamp = Date.now().toString();
+      const recvWindow = '5000';
+      
+      // Создание подписи
+      const queryString = `api_key=${this.bybitApiKey}&recv_window=${recvWindow}&timestamp=${timestamp}`;
+      const signature = crypto
+        .createHmac('sha256', this.bybitApiSecret)
+        .update(queryString)
+        .digest('hex');
+      
+      // Настройка заголовков
+      const headers = {
+        'X-BAPI-API-KEY': this.bybitApiKey,
+        'X-BAPI-TIMESTAMP': timestamp,
+        'X-BAPI-RECV-WINDOW': recvWindow,
+        'X-BAPI-SIGN': signature
+      };
+      
+      // Конвертируем таймфрейм для API Bybit
+      let interval = '1';
+      switch(timeframe) {
+        case '1m': interval = '1'; break;
+        case '5m': interval = '5'; break;
+        case '15m': interval = '15'; break;
+        case '30m': interval = '30'; break;
+        case '1h': interval = '60'; break;
+        case '4h': interval = '240'; break;
+        case '1d': interval = 'D'; break;
+        case '1w': interval = 'W'; break;
+        default: interval = 'D';
+      }
+      
+      // Получение исторических данных
+      const response = await axios.get(`${this.bybitApiUrl}/v5/market/kline`, {
+        params: {
+          category: 'spot',
+          symbol: 'BTCUSDT',
+          interval,
+          limit
+        },
+        headers
+      });
+      
+      if (response.data && response.data.result && response.data.result.list && response.data.result.list.length > 0) {
+        // Преобразуем данные в нужный формат
+        // Bybit возвращает данные в формате [timestamp, open, high, low, close, volume, turnover]
+        const candlestickData = response.data.result.list.map((item: string[]) => ({
+          time: Math.floor(parseInt(item[0]) / 1000), // конвертируем миллисекунды в секунды
+          open: parseFloat(item[1]),
+          high: parseFloat(item[2]),
+          low: parseFloat(item[3]),
+          close: parseFloat(item[4]),
+          volume: parseFloat(item[5])
+        })).reverse(); // Разворачиваем массив, так как Bybit возвращает данные от новых к старым
+        
+        this.logger.debug(`BitcoinService: получено ${candlestickData.length} свечей с Bybit`);
+        
+        return candlestickData;
+      } else {
+        throw new Error('Некорректный ответ от Bybit API при запросе свечей');
+      }
+    } catch (error) {
+      this.logger.error('BitcoinService: ошибка при получении свечей с Bybit', { error });
+      // В случае ошибки генерируем моковые данные
+      return this.generateCandlestickData(timeframe, limit);
+    }
+  }
+
+  /**
+   * Генерирует моковые данные свечей
+   * @param {string} timeframe - Временной интервал
+   * @param {number} limit - Количество свечей
+   * @returns {Array<{time: number, open: number, high: number, low: number, close: number, volume: number}>}
+   * @private
+   */
+  private generateCandlestickData(timeframe: string, limit: number): Array<any> {
+    const data = [];
+    const now = new Date();
+    const basePrice = 50000;
+    let intervalInMs;
+    
+    // Определяем интервал времени в миллисекундах
+    switch(timeframe) {
+      case '1m': intervalInMs = 60 * 1000; break;
+      case '5m': intervalInMs = 5 * 60 * 1000; break;
+      case '15m': intervalInMs = 15 * 60 * 1000; break;
+      case '30m': intervalInMs = 30 * 60 * 1000; break;
+      case '1h': intervalInMs = 60 * 60 * 1000; break;
+      case '4h': intervalInMs = 4 * 60 * 60 * 1000; break;
+      case '1d': intervalInMs = 24 * 60 * 60 * 1000; break;
+      case '1w': intervalInMs = 7 * 24 * 60 * 60 * 1000; break;
+      default: intervalInMs = 24 * 60 * 60 * 1000;
+    }
+    
+    // Генерируем свечи
+    for (let i = limit; i >= 0; i--) {
+      const timestamp = now.getTime() - i * intervalInMs;
+      const volatility = basePrice * 0.02; // 2% волатильность
+      
+      const open = basePrice + (Math.random() - 0.5) * volatility;
+      const close = open + (Math.random() - 0.5) * volatility;
+      const high = Math.max(open, close) + Math.random() * volatility * 0.5;
+      const low = Math.min(open, close) - Math.random() * volatility * 0.5;
+      const volume = Math.round(1000 + Math.random() * 9000);
+      
+      data.push({
+        time: Math.floor(timestamp / 1000),
+        open,
+        high,
+        low,
+        close,
+        volume
+      });
+    }
+    
+    return data;
   }
 
   /**

@@ -53,6 +53,47 @@ export class BitcoinController {
   }
 
   /**
+   * Получает данные свечей с Bybit
+   * @param {Request} req - HTTP запрос
+   * @param {Response} res - HTTP ответ
+   * @param {NextFunction} next - Функция middleware
+   */
+  public async getBybitCandles(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const timeframe = req.query.timeframe as string || '1d';
+      const limit = parseInt(req.query.limit as string || '200', 10);
+      
+      logger.debug('BitcoinController: запрос свечей с Bybit', { timeframe, limit });
+      
+      // Проверяем, что timeframe имеет допустимое значение
+      const validTimeframes = ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w'];
+      if (!validTimeframes.includes(timeframe)) {
+        res.status(400).json({ 
+          error: 'Invalid timeframe', 
+          validTimeframes 
+        });
+        return;
+      }
+      
+      // Проверяем, что limit находится в допустимом диапазоне
+      if (limit < 1 || limit > 1000) {
+        res.status(400).json({ 
+          error: 'Invalid limit', 
+          validRange: { min: 1, max: 1000 } 
+        });
+        return;
+      }
+      
+      const data = await this.bitcoinService.getBybitCandlestickData(timeframe, limit);
+      
+      res.json(data);
+    } catch (error) {
+      logger.error('BitcoinController: ошибка при получении свечей с Bybit', { error });
+      next(error);
+    }
+  }
+
+  /**
    * Получает анализ цены биткоина
    * @param {Request} req - HTTP запрос
    * @param {Response} res - HTTP ответ
@@ -91,11 +132,13 @@ const bitcoinController = new BitcoinController({
     support: 45000,
     resistance: 55000,
     rsi: 65
-  })
+  }),
+  getBybitCandlestickData: async () => ([])
 });
 
 export default {
   getCurrentPrice: bitcoinController.getCurrentPrice.bind(bitcoinController),
   getHistoricalData: bitcoinController.getHistoricalData.bind(bitcoinController),
-  getPriceAnalysis: bitcoinController.getPriceAnalysis.bind(bitcoinController)
+  getPriceAnalysis: bitcoinController.getPriceAnalysis.bind(bitcoinController),
+  getBybitCandles: bitcoinController.getBybitCandles.bind(bitcoinController)
 }; 

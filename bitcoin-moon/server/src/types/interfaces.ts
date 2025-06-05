@@ -104,6 +104,7 @@ export interface IBitcoinService {
   updatePriceData(): Promise<IBitcoinPriceResponse>;
   updateHistoricalData(): Promise<IBitcoinHistoricalResponse>;
   getPriceAnalysis(): Promise<any>;
+  getBybitCandlestickData(timeframe: string, limit: number): Promise<Array<any>>;
 }
 
 // Moon interfaces

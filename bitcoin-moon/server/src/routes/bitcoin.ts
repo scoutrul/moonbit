@@ -29,4 +29,13 @@ router.get('/history', bitcoinController.getHistoricalData.bind(bitcoinControlle
  */
 router.get('/analysis', bitcoinController.getPriceAnalysis.bind(bitcoinController));
 
+/**
+ * @route GET /api/bitcoin/candles
+ * @description Получение данных свечей с Bybit
+ * @param {string} timeframe - Временной интервал (1m, 5m, 15m, 30m, 1h, 4h, 1d, 1w) (опционально, по умолчанию 1d)
+ * @param {string} limit - Количество свечей (опционально, по умолчанию 200)
+ * @access Public
+ */
+router.get('/candles', bitcoinController.getBybitCandles.bind(bitcoinController));
+
 export default router; 
