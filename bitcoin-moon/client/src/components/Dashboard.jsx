@@ -18,7 +18,7 @@ import BitcoinService from '../services/BitcoinService';
  * @returns {JSX.Element}
  */
 const Dashboard = () => {
-  const [timeframe, setTimeframe] = useState('1d'); // 1h, 1d, 1w
+  const [timeframe, setTimeframe] = useState('1d'); // По умолчанию дневной таймфрейм
   /** @type {[CandlestickData[], (data: CandlestickData[]) => void]} */
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);

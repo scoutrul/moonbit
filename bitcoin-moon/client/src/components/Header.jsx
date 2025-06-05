@@ -10,6 +10,7 @@ const Header = ({ darkMode, toggleDarkMode }) => {
               width="64" 
               height="64" 
             />
+            <h1 className="ml-2 text-xl font-bold text-gray-900 dark:text-white">Биткоин и Луна</h1>
           </a>
         </div>
 
