@@ -22,7 +22,19 @@ class ErrorBoundary extends Component {
 
   componentDidCatch(error, errorInfo) {
     // Здесь можно залогировать ошибку
-    console.error('Ошибка в компоненте:', error, errorInfo);
+    console.error('🚨 ОШИБКА В КОМПОНЕНТЕ ПЕРЕХВАЧЕНА ErrorBoundary:', error, errorInfo);
+    console.error('🔍 Стек ошибки:', error.stack);
+    console.error('🧩 Стек компонентов:', errorInfo.componentStack);
+    
+    // Логируем детали для отладки переключения таймфреймов
+    if (error.message.includes('chart') || error.message.includes('timeframe') || error.message.includes('Cannot read')) {
+      console.error('🎯 ВЕРОЯТНАЯ ПРОБЛЕМА С ГРАФИКОМ:', {
+        errorMessage: error.message,
+        errorName: error.name,
+        componentStack: errorInfo.componentStack,
+        timestamp: new Date().toISOString()
+      });
+    }
 
     // Можно добавить отправку ошибки в сервис мониторинга
     this.logErrorToService(error, errorInfo);
@@ -31,6 +43,11 @@ class ErrorBoundary extends Component {
       error,
       errorInfo,
     });
+    
+    // Вызываем колбэк onError если он передан
+    if (this.props.onError) {
+      this.props.onError(error, errorInfo);
+    }
   }
 
   /**
@@ -88,7 +105,7 @@ class ErrorBoundary extends Component {
             this.props.fallback
           ) : (
             <div>
-              {import.meta.env.MODE !== 'production' && (
+              {process.env.NODE_ENV !== 'production' && (
                 <details className="mt-2 text-sm">
                   <summary className="cursor-pointer font-bold">Технические детали ошибки</summary>
                   <p className="mt-2">{this.state.error && this.state.error.toString()}</p>

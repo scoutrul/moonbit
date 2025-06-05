@@ -18,9 +18,11 @@ import { subscribeToPriceUpdates } from '../utils/mockDataGenerator';
  * 
  * @param {Object} props - свойства компонента
  * @param {string} props.timeframe - выбранный таймфрейм
- * @param {CandlestickData[]} props.data - данные для отображения на графике
+ * @param {CandlestickData[]} [props.data] - данные для отображения на графике (опционально)
  */
-const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
+const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
+  console.log('🚀 BitcoinChartWithLunarPhases: Компонент инициализируется', { timeframe, dataLength: data?.length || 0 });
+  
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
   const candlestickSeriesRef = useRef(null);
@@ -28,7 +30,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
   const legendRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [chartData, setChartData] = useState(data || []);
+  const [chartData, setChartData] = useState([]);
   const [forecastData, setForecastData] = useState([]);
   const [showForecast, setShowForecast] = useState(true);
   const [events, setEvents] = useState([]);
@@ -36,12 +38,20 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
   const [futureLunarEvents, setFutureLunarEvents] = useState([]);
   const unsubscribeRef = useRef(null);
   const [isChartFocused, setIsChartFocused] = useState(false);
-  const previousTimeframeRef = useRef(timeframe);
+  const previousTimeframeRef = useRef(null);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     // Инициализируем состояние темы при первом рендере
     const isDark = document.documentElement.classList.contains('dark');
-    console.log('Начальная инициализация темы:', isDark ? 'темная' : 'светлая');
+    console.log('🌙 Начальная инициализация темы:', isDark ? 'темная' : 'светлая');
     return isDark;
+  });
+  
+  console.log('📊 Состояние компонента:', { 
+    loading, 
+    error: !!error, 
+    chartDataLength: chartData.length, 
+    forecastDataLength: forecastData.length,
+    lunarEventsLength: lunarEvents.length
   });
   
   // Состояние для текущей цены биткоина
@@ -358,6 +368,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
   const [lunarEventsLoading, setLunarEventsLoading] = useState(false);
   const lunarEventsRequestsRef = useRef(new Map());
   const lunarEventsLoadedRef = useRef(false); // Флаг для отслеживания первичной загрузки
+  const activeRequestRef = useRef(null); // Ссылка на активный запрос для отмены
   
   // Модифицированная функция для получения лунных событий с кэшированием
   const getLunarEventsWithCache = useCallback(async (startDate, endDate) => {
@@ -396,41 +407,67 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
   
   // Эффект для пересоздания графика при изменении таймфрейма
   useEffect(() => {
-    console.log(`Изменение таймфрейма: ${previousTimeframeRef.current} -> ${timeframe}`);
+    console.log(`🔄 Изменение таймфрейма: ${previousTimeframeRef.current} -> ${timeframe}`);
     
-    // Если таймфрейм изменился, пересоздаем график
-    if (previousTimeframeRef.current !== timeframe) {
+    // Если таймфрейм изменился, отменяем предыдущие запросы и пересоздаем график
+    if (previousTimeframeRef.current !== null && previousTimeframeRef.current !== timeframe) {
+      console.log('⚠️ ОТМЕНА предыдущих запросов из-за смены таймфрейма');
+      
+      // Отменяем активный запрос, если он есть
+      if (activeRequestRef.current) {
+        activeRequestRef.current.isCancelled = true;
+        console.log('🚫 Отменен активный запрос');
+      }
+      
+      // Очищаем кэш лунных событий для избежания конфликтов
+      lunarEventsRequestsRef.current.clear();
+      
       // Сначала устанавливаем состояние загрузки
       setLoading(true);
       setError(null);
       
       // Сбрасываем флаг загрузки лунных событий
       lunarEventsLoadedRef.current = false;
+      setLunarEventsLoading(false);
       
-      // Очищаем данные
+      // Очищаем данные ТОЛЬКО если это действительно новый таймфрейм
       setChartData([]);
       setForecastData([]);
       setLunarEvents([]);
       setFutureLunarEvents([]);
       
-      // Обновляем предыдущий таймфрейм
-      previousTimeframeRef.current = timeframe;
+      console.log('✅ Состояние очищено для нового таймфрейма:', timeframe);
     }
+    
+    // Обновляем предыдущий таймфрейм в любом случае
+    previousTimeframeRef.current = timeframe;
     
   }, [timeframe]);
 
   // Загрузка данных при монтировании или изменении timeframe
   useEffect(() => {
+    console.log('⚡ useEffect loadData запущен:', { timeframe, dataLength: data?.length || 0, loading });
+    
     let isMounted = true;
     const retryLimit = 3;
     let retryCount = 0;
     
+    // Создаем объект для отслеживания отмены запроса
+    const requestController = { isCancelled: false };
+    activeRequestRef.current = requestController;
+    
     const fetchData = async () => {
-      if (!isMounted) return;
+      console.log('🔄 fetchData начинается:', { isMounted, timeframe, retryCount, cancelled: requestController.isCancelled });
+      
+      if (!isMounted || requestController.isCancelled) {
+        console.log('🚫 fetchData прерван: компонент размонтирован или запрос отменен');
+        return;
+      }
       
       try {
         setLoading(true);
         setError(null);
+        console.log('✅ Состояние обновлено: loading=true, error=null');
 
         let chartData = [];
         let forecast = [];
@@ -438,30 +475,59 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
 
         // Если данные не были переданы извне, загружаем их
         if (!data || data.length === 0) {
-          console.log(`Загрузка данных для таймфрейма ${timeframe}`);
+          console.log(`📡 Загрузка данных для таймфрейма ${timeframe}`);
           
           try {
+            // Проверяем отмену перед каждым шагом
+            if (requestController.isCancelled) {
+              console.log('🚫 Запрос отменен перед загрузкой данных');
+              return;
+            }
+            
             // Загружаем расширенные данные (исторические + прогноз)
+            console.log('🎯 Вызываем ForecastService.getExtendedChartData...');
             const extendedData = await ForecastService.getExtendedChartData(timeframe, 30);
             
-            if (!isMounted) return;
+            // Еще одна проверка после асинхронного запроса
+            if (!isMounted || requestController.isCancelled) {
+              console.log('🚫 Запрос отменен после получения данных от ForecastService');
+              return;
+            }
+            
+            console.log('📋 Получены данные от ForecastService:', {
+              historicalDataLength: extendedData.historicalData?.length || 0,
+              forecastDataLength: extendedData.forecastData?.length || 0,
+              lunarEventsLength: extendedData.lunarEvents?.length || 0
+            });
             
             if (extendedData.historicalData && extendedData.historicalData.length > 0) {
               chartData = extendedData.historicalData;
               forecast = extendedData.forecastData || [];
-              setChartData(chartData);
-              setForecastData(forecast);
+              
+              // Проверяем перед обновлением состояния
+              if (!requestController.isCancelled) {
+                setChartData(chartData);
+                setForecastData(forecast);
+                console.log('✅ Данные установлены в состояние:', { chartDataLength: chartData.length, forecastLength: forecast.length });
+              }
               
               // Загружаем лунные события для исторического и прогнозного периода
               if (extendedData.lunarEvents && extendedData.lunarEvents.length > 0) {
-                console.log('Получено лунных событий для прогноза:', extendedData.lunarEvents.length);
-                setFutureLunarEvents(extendedData.lunarEvents);
-                combinedLunarEvents = extendedData.lunarEvents;
+                console.log('🌙 Получено лунных событий для прогноза:', extendedData.lunarEvents.length);
+                if (!requestController.isCancelled) {
+                  setFutureLunarEvents(extendedData.lunarEvents);
+                  combinedLunarEvents = extendedData.lunarEvents;
+                }
               }
             } else {
               throw new Error('Получены пустые данные от сервера');
             }
           } catch (err) {
+            if (requestController.isCancelled) {
+              console.log('🚫 Обработка ошибки пропущена: запрос отменен');
+              return;
+            }
+            
             console.error('Ошибка при загрузке данных через ForecastService:', err);
             
             // Повторяем попытку загрузки данных напрямую через BitcoinService
@@ -469,22 +535,41 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
               retryCount++;
               console.log(`Повторная попытка загрузки данных (${retryCount}/${retryLimit})`);
               
-              const candlesData = await BitcoinService.getCandlestickData(timeframe);
-              
-              if (!isMounted) return;
-              
-              if (candlesData && candlesData.length > 0) {
-                chartData = candlesData;
-                setChartData(chartData);
+              try {
+                const candlesData = await BitcoinService.getCandlestickData(timeframe);
                 
-                // Генерируем прогноз на основе полученных данных
-                forecast = ForecastService.generateForecastData(chartData, timeframe, 30);
-                setForecastData(forecast);
-              } else {
-                throw new Error('Не удалось загрузить данные свечей');
+                if (!isMounted || requestController.isCancelled) return;
+                
+                if (candlesData && candlesData.length > 0) {
+                  chartData = candlesData;
+                  setChartData(chartData);
+                  
+                  // Генерируем прогноз на основе полученных данных
+                  forecast = ForecastService.generateForecastData(chartData, timeframe, 30);
+                  setForecastData(forecast);
+                } else {
+                  throw new Error('Не удалось загрузить данные свечей');
+                }
+              } catch (retryError) {
+                console.error(`Повторная попытка ${retryCount} также неудачна:`, retryError);
+                if (retryCount >= retryLimit) {
+                  // Используем fallback данные
+                  console.log('Используем fallback данные для графика');
+                  chartData = generateFallbackData(timeframe);
+                  setChartData(chartData);
+                  forecast = ForecastService.generateForecastData(chartData, timeframe, 30);
+                  setForecastData(forecast);
+                  setError('Не удалось подключиться к серверу. Отображаются демонстрационные данные.');
+                }
               }
             } else {
-              throw new Error('Превышено количество попыток загрузки данных');
+              // Используем fallback данные после исчерпания попыток
+              console.log('Все попытки исчерпаны, используем fallback данные');
+              chartData = generateFallbackData(timeframe);
+              setChartData(chartData);
+              forecast = ForecastService.generateForecastData(chartData, timeframe, 30);
+              setForecastData(forecast);
+              setError('Сервер временно недоступен. Отображаются демонстрационные данные.');
             }
           }
         } else {
@@ -507,7 +592,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
                 setLunarEventsLoading(true);
                 const futureEvents = await getLunarEventsWithCache(startDate, endDate);
                 
-                if (!isMounted) return;
+                if (!isMounted || requestController.isCancelled) return;
                 
                 // Нормализуем формат будущих событий и отмечаем их как прогнозные
                 const normalizedFutureEvents = futureEvents.map(event => {
@@ -529,42 +614,60 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
         }
         
         // Загружаем исторические лунные события
-        if (chartData && chartData.length > 0 && !lunarEventsLoading && !lunarEventsLoadedRef.current) {
+        if (chartData && chartData.length > 0 && !lunarEventsLoading) {
           try {
             const startDate = new Date(chartData[0].time * 1000);
             const endDate = new Date(chartData[chartData.length - 1].time * 1000);
             
-            console.log(`Запрашиваем исторические лунные события: ${startDate.toISOString()} - ${endDate.toISOString()}`);
+            console.log(`🌙 Запрашиваем исторические лунные события: ${startDate.toISOString()} - ${endDate.toISOString()}`);
             
             // Избегаем повторных запросов на те же даты
             setLunarEventsLoading(true);
             const historicalEvents = await getLunarEventsWithCache(startDate, endDate);
             
-            if (!isMounted) return;
+            if (!isMounted || requestController.isCancelled) return;
             
-            console.log('Получено исторических лунных событий:', historicalEvents.length);
+            console.log('🎉 Получено исторических лунных событий:', historicalEvents.length);
+            console.log('🌙 Исторические события:', historicalEvents);
             
-            setLunarEvents([...historicalEvents, ...combinedLunarEvents]);
+            // Объединяем исторические и будущие события
+            const allLunarEvents = [...historicalEvents, ...combinedLunarEvents];
+            console.log('🌟 Устанавливаем в состояние всего лунных событий:', allLunarEvents.length);
+            
+            setLunarEvents(allLunarEvents);
             setLunarEventsLoading(false);
+            lunarEventsLoadedRef.current = true; // Отмечаем успешную загрузку
           } catch (err) {
-            console.error('Ошибка при загрузке исторических лунных событий:', err);
+            console.error('❌ Ошибка при загрузке исторических лунных событий:', err);
             setLunarEventsLoading(false);
             // Продолжаем выполнение, даже если не удалось загрузить лунные события
           }
         }
         
-        if (!isMounted) return;
+        if (!isMounted || requestController.isCancelled) return;
         
         // Создаем график после загрузки данных
         if (chartData && chartData.length > 0) {
-          console.log(`Создание графика для таймфрейма ${timeframe} с ${chartData.length} свечами`);
+          console.log(`🎨 СОЗДАНИЕ ГРАФИКА для таймфрейма ${timeframe} с ${chartData.length} свечами`);
           setTimeout(() => {
-            if (isMounted) {
+            if (isMounted && !requestController.isCancelled) {
+              console.log('⏰ Таймаут для создания графика выполняется');
               recreateChart();
+            } else {
+              console.log('🚫 Создание графика отменено');
             }
           }, 0);
         } else {
-          setError('Не удалось загрузить данные для графика');
+          console.log('❌ НЕ УДАЛОСЬ СОЗДАТЬ ГРАФИК: нет данных chartData');
+          if (!requestController.isCancelled) {
+            setError('Не удалось загрузить данные для графика');
+          }
+        }
+        
+        // Проверяем отмену перед финальными операциями
+        if (requestController.isCancelled) {
+          console.log('🚫 Финальные операции пропущены: запрос отменен');
+          return;
         }
         
         // Запускаем обновление текущей цены биткоина
@@ -573,7 +676,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
         // Получаем текущую цену биткоина каждые 5 минут (вместо 60 секунд)
         const priceInterval = setInterval(() => {
           // Обновляем цену только если вкладка активна
-          if (isMounted && !document.hidden) {
+          if (isMounted && !document.hidden && !requestController.isCancelled) {
             fetchPrice();
           }
         }, 5 * 60 * 1000); // 5 минут
@@ -582,8 +685,9 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
         const unsubscribe = subscribeToPriceUpdates(handlePriceUpdate);
         unsubscribeRef.current = unsubscribe;
         
-        if (isMounted) {
+        if (isMounted && !requestController.isCancelled) {
           setLoading(false);
+          console.log('🎉 ЗАГРУЗКА ЗАВЕРШЕНА! setLoading(false) установлено');
         }
         
         return () => {
@@ -593,12 +697,75 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
           }
         };
       } catch (err) {
+        if (requestController.isCancelled) {
+          console.log('🚫 Обработка ошибки пропущена: запрос отменен');
+          return;
+        }
+        
         console.error('Ошибка при загрузке данных графика:', err);
-        if (isMounted) {
-          setError(`Не удалось загрузить данные графика: ${err.message}`);
+        if (isMounted && !requestController.isCancelled) {
+          // Если все попытки неудачны, показываем fallback данные с предупреждением
+          const fallbackData = generateFallbackData(timeframe);
+          setChartData(fallbackData);
+          const fallbackForecast = ForecastService.generateForecastData(fallbackData, timeframe, 30);
+          setForecastData(fallbackForecast);
+          
+          setError(`Не удалось подключиться к серверу: ${err.message}. Отображаются демонстрационные данные.`);
           setLoading(false);
+          
+          // Все равно создаем график с fallback данными
+          setTimeout(() => {
+            if (isMounted && !requestController.isCancelled) {
+              recreateChart();
+            }
+          }, 0);
         }
       }
+    };
+
+    // Генерация fallback данных
+    const generateFallbackData = (timeframe) => {
+      const data = [];
+      const now = Date.now();
+      const basePrice = 45000; // Базовая цена
+      let intervalInMs;
+      let periodsCount;
+      
+      // Определяем интервал и количество периодов
+      switch(timeframe) {
+        case '1m': intervalInMs = 60 * 1000; periodsCount = 100; break;
+        case '5m': intervalInMs = 5 * 60 * 1000; periodsCount = 100; break;
+        case '15m': intervalInMs = 15 * 60 * 1000; periodsCount = 100; break;
+        case '30m': intervalInMs = 30 * 60 * 1000; periodsCount = 100; break;
+        case '1h': intervalInMs = 60 * 60 * 1000; periodsCount = 100; break;
+        case '4h': intervalInMs = 4 * 60 * 60 * 1000; periodsCount = 100; break;
+        case '1d': intervalInMs = 24 * 60 * 60 * 1000; periodsCount = 90; break;
+        case '1w': intervalInMs = 7 * 24 * 60 * 60 * 1000; periodsCount = 52; break;
+        default: intervalInMs = 24 * 60 * 60 * 1000; periodsCount = 90; break;
+      }
+      
+      for (let i = periodsCount; i >= 0; i--) {
+        const time = Math.floor((now - (i * intervalInMs)) / 1000);
+        
+        // Генерируем реалистичные данные свечей
+        const variance = 500 + Math.random() * 1000;
+        const trend = (periodsCount - i) * 10; // Небольшой восходящий тренд
+        
+        const open = basePrice + trend + (Math.random() - 0.5) * variance;
+        const close = open + (Math.random() - 0.5) * variance * 0.5;
+        const high = Math.max(open, close) + Math.random() * variance * 0.3;
+        const low = Math.min(open, close) - Math.random() * variance * 0.3;
+        
+        data.push({
+          time,
+          open: Math.round(open * 100) / 100,
+          high: Math.round(high * 100) / 100,
+          low: Math.round(low * 100) / 100,
+          close: Math.round(close * 100) / 100,
+        });
+      }
+      
+      return data;
     };
     
     fetchData();
@@ -618,7 +785,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
         unsubscribeRef.current = null;
       }
     };
-  }, [timeframe, data, handlePriceUpdate, recreateChart, getLunarEventsWithCache, lunarEventsLoading]);
+  }, [timeframe]);
 
   // Функция для получения текущей цены биткоина
   const fetchPrice = async () => {
@@ -816,6 +983,21 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
             // Определяем цвет маркера в зависимости от типа события
             const isNewMoon = event.type === 'new_moon';
             
+            // Правильно обрабатываем время события
+            let eventTime;
+            if (event.date) {
+              // Если время в формате ISO string
+              eventTime = Math.floor(new Date(event.date).getTime() / 1000);
+            } else if (event.time) {
+              // Если время в формате timestamp
+              eventTime = typeof event.time === 'number' ? event.time : Math.floor(new Date(event.time).getTime() / 1000);
+            } else {
+              console.warn('Лунное событие без времени:', event);
+              return null;
+            }
+            
+            console.log(`🌙 Обрабатываем лунное событие: ${event.phaseName} на ${new Date(eventTime * 1000).toISOString()}`);
+            
             // Разные цвета для исторических и прогнозных событий
             let markerColor;
             if (event.isForecast) {
@@ -828,7 +1010,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
             
             // Получаем приблизительную цену для маркера
             const combinedData = [...chartData, ...forecastData];
-            const eventDate = new Date(event.time * 1000);
+            const eventDate = new Date(eventTime * 1000);
             const price = getApproximatePriceForDate(eventDate, combinedData);
             
             // Устанавливаем разный стиль для будущих событий
@@ -836,16 +1018,18 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
             const position = 'aboveBar';
             
             // Определяем, попадает ли событие в прогнозную часть графика
-            const isInForecastPeriod = event.time > (chartData.length > 0 ? chartData[chartData.length - 1].time : 0);
+            const isInForecastPeriod = eventTime > (chartData.length > 0 ? chartData[chartData.length - 1].time : 0);
             
-            // Если event.time в пределах прогнозного периода и showForecast отключен,
+            // Если eventTime в пределах прогнозного периода и showForecast отключен,
             // не добавляем маркер
             if (isInForecastPeriod && !showForecast) {
               return null;
             }
             
+            console.log(`✅ Создаем маркер для ${event.phaseName}: time=${eventTime}, price=${price?.toFixed(2)}, color=${markerColor}`);
+            
             return {
-              time: event.time,
+              time: eventTime,
               position: position,
               shape: 'text',
               text: event.icon || (isNewMoon ? '🌑' : '🌕'),
@@ -1063,12 +1247,14 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
       window.addEventListener('keyup', handleKeyUp);
       window.addEventListener('resize', handleResize);
 
-      // Добавляем обработчик события ухода курсора с графика
-      chartContainerRef.current.addEventListener('mouseleave', () => {
+      // Обработчик события ухода курсора с графика для обновления легенды
+      const handleLegendUpdate = () => {
         if (legendRef.current) {
           updateLegend(undefined);
         }
-      });
+      };
+      
+      chartContainerRef.current.addEventListener('mouseleave', handleLegendUpdate);
 
       return () => {
         window.removeEventListener('resize', handleResize);
@@ -1077,6 +1263,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
         if (chartContainerRef.current) {
           chartContainerRef.current.removeEventListener('mouseenter', handleChartFocus);
           chartContainerRef.current.removeEventListener('mouseleave', handleChartBlur);
+          chartContainerRef.current.removeEventListener('mouseleave', handleLegendUpdate);
         }
         if (chartRef.current) {
           chartRef.current.remove();
@@ -1088,10 +1275,9 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
           chartContainerRef.current.removeChild(legendRef.current);
           legendRef.current = null;
         }
-        chartContainerRef.current.removeEventListener('mouseleave', () => {});
       };
     }
-  }, [chartData, forecastData, lunarEvents, events, timeframe, isDarkMode, isChartFocused, showForecast]);
+  }, [chartData, forecastData, lunarEvents, events, timeframe, isDarkMode, showForecast]);
 
   // Функция для получения приблизительной цены для даты события
   const getApproximatePriceForDate = (date, candleData) => {
@@ -1218,8 +1404,35 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
               <span className="text-gray-600 dark:text-gray-300">Экономика</span>
             </span>
           </div>
+          {/* Кнопка экстренной отладки */}
+          <button
+            onClick={() => {
+              console.log('🔧 ЭКСТРЕННАЯ ОТЛАДКА:', {
+                loading,
+                error,
+                chartDataLength: chartData.length,
+                timeframe,
+                containerRef: !!chartContainerRef.current,
+                chartRef: !!chartRef.current
+              });
+              // Принудительно снимаем состояние загрузки
+              setLoading(false);
+            }}
+            className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+          >
+            DEBUG
+          </button>
         </div>
-        <div className="animate-pulse h-[500px] bg-gray-200 dark:bg-gray-700 rounded"></div>
+        <div className="animate-pulse h-[500px] bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-lg font-semibold text-gray-600 dark:text-gray-300 mb-2">
+              Загрузка графика биткоина...
+            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Таймфрейм: {timeframe}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -1227,8 +1440,29 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
   if (error && chartData.length === 0) {
     return (
       <div className="w-full">
-        <div className="h-[500px] flex items-center justify-center text-red-500">
-          {error}
+        <div className="h-[500px] flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="text-center max-w-md">
+            <div className="mb-4">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+              Проблема с подключением
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              {error}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            >
+              <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Повторить попытку
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1236,6 +1470,28 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data }) => {
 
   return (
     <div className="w-full flex flex-col gap-4">
+      {/* Предупреждение о демонстрационных данных */}
+      {error && chartData.length > 0 && (
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3">
+          <div className="flex items-center">
+            <svg className="h-5 w-5 text-yellow-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                {error}
+              </p>
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="ml-3 text-sm text-yellow-800 dark:text-yellow-200 hover:text-yellow-900 dark:hover:text-yellow-100 underline"
+            >
+              Обновить
+            </button>
+          </div>
+        </div>
+      )}
+      
       <div 
         ref={chartContainerRef} 
         data-testid="bitcoin-chart"
