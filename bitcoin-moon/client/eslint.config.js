@@ -1,14 +1,24 @@
 import globals from 'globals';
 import js from '@eslint/js';
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 export default [
+  // Ignore patterns - ВАЖНО: должно быть ПЕРВЫМ
+  {
+    ignores: [
+      'node_modules/**',
+      'dist/**', 
+      'build/**',
+      'coverage/**',
+      '.vite/**',
+      'test-results/**',
+      '**/*.min.js'
+    ]
+  },
+  
   // Базовая конфигурация
   js.configs.recommended,
+  
+  // Основные src файлы
   {
     languageOptions: {
       ecmaVersion: 2022,
@@ -27,29 +37,65 @@ export default [
         global: 'readonly',
       },
     },
-    files: ['**/*.js', '**/*.jsx'],
+    files: ['src/**/*.js', 'src/**/*.jsx'],
     rules: {
       // Базовые правила
       'no-console': 'off',
       'no-debugger': 'off',
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'no-duplicate-imports': 'error',
-
-      // Правила для чистых функций
       'no-param-reassign': 'warn',
       'prefer-const': 'error',
-
-      // Отключаем проверку JSX
-      'react/jsx-uses-react': 'off',
-      'react/react-in-jsx-scope': 'off',
+      'no-useless-catch': 'off', // Часто используется для логирования
     }
   },
-  // Конфигурация для тестов
+  
+  // Конфигурационные файлы (CommonJS)
   {
-    files: ['**/__tests__/**/*.[jt]s?(x)', '**/?(*.)+(spec|test).[jt]s?(x)'],
+    files: ['*.config.js', 'tailwind.config.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        require: 'readonly',
+        module: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+      },
+      sourceType: 'module'
+    },
     rules: {
-      // Расслабленные правила для тестов
       'no-unused-vars': 'off'
+    }
+  },
+  
+  // Тестовые файлы
+  {
+    files: ['**/__tests__/**/*.[jt]s?(x)', '**/?(*.)+(spec|test).[jt]s?(x)', 'tests/**/*'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.jest,
+        ...globals.node,
+        global: 'readonly',
+        fetch: 'readonly',
+        console: 'readonly',
+        require: 'readonly'
+      },
+    },
+    rules: {
+      'no-unused-vars': 'off',
+      'no-undef': 'off' // Тестовые файлы могут использовать разные globals
+    }
+  },
+  
+  // Public файлы (browser scripts)
+  {
+    files: ['public/**/*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        window: 'readonly'
+      }
     }
   }
 ]; 
