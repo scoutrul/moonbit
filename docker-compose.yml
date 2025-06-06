@@ -7,8 +7,8 @@ services:
     environment:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
-      - VITE_API_URL=http://localhost:3001/api
-      # Используем localhost вместо server:3001, чтобы клиент обращался через порт на хосте
+      - VITE_API_URL=http://server:3001/api
+      # Используем server:3001 для обращения к серверу из клиентского контейнера
     ports:
       - '3000:3000'
       - '5173:5173'

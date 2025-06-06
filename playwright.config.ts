@@ -8,8 +8,7 @@ export default defineConfig({
     trace: 'on',
     screenshot: 'on',
   },
-  /* Отключаем автоматический запуск серверов, так как они уже запущены */
-  /*
+  /* Auto-start client and server for tests */
   webServer: [
     {
       command: 'cd bitcoin-moon/server && npm run dev',
@@ -24,7 +23,6 @@ export default defineConfig({
       timeout: 120 * 1000,
     },
   ],
-  */
   expect: {
     timeout: 10000,
   },

@@ -23,7 +23,18 @@ export class BitcoinController {
       
       const data = await this.bitcoinService.getCurrentPrice();
       
-      res.json(data);
+      // Преобразуем формат ответа в плоский объект для совместимости с клиентом
+      const responseData = {
+        price: data.usd.price,
+        currency: 'usd',
+        last_updated: new Date().toISOString(),
+        change_24h: data.usd.change_24h,
+        change_percentage_24h: data.usd.change_24h !== 0 ? (data.usd.change_24h / data.usd.price) * 100 : 0,
+        market_cap: data.usd.market_cap,
+        volume_24h: data.usd.volume_24h,
+      };
+      
+      res.json(responseData);
     } catch (error) {
       logger.error('BitcoinController: ошибка при получении текущей цены', { error });
       next(error);
