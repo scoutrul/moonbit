@@ -5,10 +5,10 @@ const About = () => {
     <div className="w-full px-2">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 max-w-4xl mx-auto">
         <div className="flex flex-col items-center mb-8">
-          <h1 className="text-2xl font-bold text-center text-gray-800 dark:text-white">О проекте «Биткоин и Луна»</h1>
+          <h1 className="text-2xl font-bold text-center text-gray-800 dark:text-white">О проекте «Мунбит»</h1>
           <img 
             src="/logo.png" 
-            alt="Логотип Биткоин и Луна" 
+            alt="Логотип Мунбит" 
             className="mb-4" 
             height="160"
             width="160"
@@ -18,7 +18,7 @@ const About = () => {
         <section className="mb-8">
           <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Концепция проекта</h2>
           <p className="text-gray-700 dark:text-gray-300 mb-4">
-            Проект «Биткоин и Луна» исследует взаимосвязь между движением цены биткоина и лунными фазами. 
+            Проект «Мунбит» исследует взаимосвязь между движением цены биткоина и лунными фазами. 
             В основе проекта лежит идея о том, что природные циклы могут оказывать определённое влияние на 
             финансовые рынки, включая криптовалютный рынок.
           </p>
@@ -88,12 +88,12 @@ const About = () => {
           <p className="text-gray-700 dark:text-gray-300">
             <strong>GitHub:</strong>{' '}
             <a 
-              href="https://github.com/yourusername/bitcoin-moon" 
+              href="https://github.com/yourusername/moonbit" 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-blue-600 dark:text-blue-400 hover:underline"
             >
-              github.com/yourusername/bitcoin-moon
+              github.com/yourusername/moonbit
             </a>
           </p>
         </section>

@@ -6,11 +6,11 @@ const Header = ({ darkMode, toggleDarkMode }) => {
           <a href="/" className="flex items-center">
             <img 
               src="/logo.png" 
-              alt="Биткоин и Луна" 
+              alt="Мунбит" 
               width="64" 
               height="64" 
             />
-            <h1 className="ml-2 text-xl font-bold text-gray-900 dark:text-white">Биткоин и Луна</h1>
+            <h1 className="ml-2 text-xl font-bold text-gray-900 dark:text-white">Мунбит</h1>
           </a>
         </div>
 
@@ -20,6 +20,13 @@ const Header = ({ darkMode, toggleDarkMode }) => {
             className="mr-4 text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
           >
             О проекте
+          </a>
+          
+          <a 
+            href="/demo" 
+            className="mr-4 text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400"
+          >
+            Демо
           </a>
           
           <button

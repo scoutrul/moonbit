@@ -16,11 +16,9 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': {
-        // Автоматическое определение target для разных сред:
-        // - В dev режиме (локально): используем localhost:3001
-        // - В Docker: используем переменную окружения VITE_API_URL
-        target: process.env.VITE_API_URL ? 
-          process.env.VITE_API_URL.replace('/api', '') :  // Убираем /api из URL если есть
+        // В Docker используем server:3001, локально localhost:3001
+        target: process.env.DOCKER_ENV === 'true' ? 
+          'http://server:3001' : 
           'http://localhost:3001',
         changeOrigin: true,
         secure: false,

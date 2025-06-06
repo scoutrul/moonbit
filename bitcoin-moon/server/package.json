@@ -1,8 +1,8 @@
 {
-  "name": "bitcoin-moon-server",
+  "name": "moonbit-server",
   "version": "1.0.0",
   "type": "module",
-  "description": "Bitcoin Moon Phase Analysis Server",
+  "description": "MoonBit Server - Node.js API для анализа криптовалют с лунными фазами",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
@@ -14,6 +14,7 @@
     "lint": "eslint src/ __tests__/ --ext .ts,.js",
     "lint:fix": "eslint src/ __tests__/ --ext .ts,.js --fix"
   },
+  "keywords": ["moonbit", "bitcoin", "cryptocurrency", "lunar-phases", "astrology", "api", "server"],
   "dependencies": {
     "astronomia": "^4.1.1",
     "axios": "^1.4.0",

@@ -17,6 +17,7 @@ export interface CurrencyChartProps extends Omit<BaseChartProps, 'onDataUpdate'>
   timeframe?: string;
   onTimeframeChange?: (timeframe: string) => void;
   onDataUpdate?: (data: BaseChartData[], currency: CurrencyInfo | undefined) => void;
+  showAdvancedFeatures?: boolean;
 }
 
 const defaultBitcoinInfo: CurrencyInfo = {
@@ -30,10 +31,22 @@ const defaultBitcoinInfo: CurrencyInfo = {
 export const CurrencyChart: React.FC<CurrencyChartProps> = ({
   currency = defaultBitcoinInfo,
   showCurrencyInfo = true,
+  showAdvancedFeatures = true,
   timeframe = '1d',
   onTimeframeChange,
   onDataUpdate,
   className = '',
+  // Передаем все новые props из BaseChart
+  enableInfiniteScroll = true,
+  loadMoreThreshold = 15,
+  enableZoomPersistence = true,
+  enablePlugins = true,
+  plugins = [],
+  pluginConfig = {},
+  events = [],
+  onVisibleRangeChange,
+  onLoadMoreData,
+  initialVisibleRange,
   ...baseChartProps
 }) => {
   const handleDataUpdate = (data: BaseChartData[]) => {
@@ -79,6 +92,9 @@ export const CurrencyChart: React.FC<CurrencyChartProps> = ({
               <div className="flex items-center space-x-2">
                 <h3 className="text-lg font-semibold text-white">{currency.name}</h3>
                 <Badge variant="moon" size="sm">{currency.symbol}</Badge>
+                {showAdvancedFeatures && (
+                  <Badge variant="success" size="sm">MoonBit Enhanced</Badge>
+                )}
               </div>
               <div className="text-2xl font-bold text-white">
                 {formatPrice(currency.currentPrice)}
@@ -108,10 +124,58 @@ export const CurrencyChart: React.FC<CurrencyChartProps> = ({
         </div>
       )}
 
+      {/* Advanced Features Info */}
+      {showAdvancedFeatures && (enableInfiniteScroll || enablePlugins) && (
+        <div className="bg-dark-card border border-dark-border rounded-lg p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="text-sm font-medium text-moon-silver">Enhanced Features:</div>
+              <div className="flex items-center space-x-3">
+                {enableInfiniteScroll && (
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-xs text-moon-muted">Infinite Scroll</span>
+                  </div>
+                )}
+                {enablePlugins && plugins.length > 0 && (
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span className="text-xs text-moon-muted">{plugins.length} Plugin(s)</span>
+                  </div>
+                )}
+                {events.length > 0 && (
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                    <span className="text-xs text-moon-muted">{events.length} Event(s)</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="text-xs text-moon-muted">
+              Scroll to edges to load more data
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Chart */}
       <BaseChart
         {...baseChartProps}
+        timeframe={timeframe}
+        // Advanced features
+        enableInfiniteScroll={enableInfiniteScroll}
+        loadMoreThreshold={loadMoreThreshold}
+        enableZoomPersistence={enableZoomPersistence}
+        initialVisibleRange={initialVisibleRange}
+        // Plugin system
+        enablePlugins={enablePlugins}
+        plugins={plugins}
+        pluginConfig={pluginConfig}
+        events={events}
+        // Event handlers
         onDataUpdate={handleDataUpdate}
+        onVisibleRangeChange={onVisibleRangeChange}
+        onLoadMoreData={onLoadMoreData}
         className="min-h-[400px]"
       />
     </div>

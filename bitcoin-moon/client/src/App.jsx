@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import About from './components/About';
+import DemoPage from './components/pages/DemoPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import DevPanel from './components/DevPanel';
 
@@ -46,6 +47,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/about" element={<About />} />
+                <Route path="/demo" element={<DemoPage />} />
               </Routes>
             </ErrorBoundary>
           </main>

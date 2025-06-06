@@ -24,7 +24,6 @@ const Dashboard = () => {
   useEffect(() => {
     const handleTimeframeChanged = (event) => {
       const newTimeframe = event.detail.timeframe;
-      console.log('🔄 Dashboard: получено событие изменения таймфрейма:', newTimeframe);
       setTimeframe(newTimeframe);
     };
 
@@ -42,6 +41,34 @@ const Dashboard = () => {
 
   return (
     <div className="w-full px-2" data-testid="dashboard">
+      {/* Заголовок с информацией о новых возможностях */}
+      <div className="mb-4 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              Мунбит - Enhanced Edition
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300">
+              Крипто аналитика с лунными фазами и infinite scroll
+            </p>
+          </div>
+          <div className="hidden md:flex items-center space-x-4 text-sm">
+            <div className="flex items-center space-x-1">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span className="text-gray-600 dark:text-gray-300">Infinite Scroll</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <span className="text-gray-600 dark:text-gray-300">Auto Refresh</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+              <span className="text-gray-600 dark:text-gray-300">Dynamic Loading</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-col lg:grid lg:grid-cols-12 gap-2 lg:h-[556px]">
         {/* Правая колонка с графиком - на мобильных отображается первой */}
         <div className="order-1 lg:order-2 lg:col-span-10 h-[500px] lg:h-full mb-2 lg:mb-0">
@@ -51,9 +78,9 @@ const Dashboard = () => {
               fallbackComponent={null}
               onError={handleError}
             >
-              {/* Убираем onPriceUpdate - больше не нужен */}
+              {/* Возвращаем старый рабочий график */}
               <BitcoinChartWithLunarPhases 
-                timeframe={timeframe} 
+                timeframe={timeframe}
               />
             </ErrorWrapper>
           </div>

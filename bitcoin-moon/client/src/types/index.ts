@@ -49,9 +49,17 @@ export interface Event {
   title: string;
   description: string;
   date: string;
+  /** Timestamp for chart rendering */
+  timestamp: number;
+  /** Event type for plugin filtering */
+  type: 'lunar' | 'economic' | 'technical' | 'custom';
+  /** Event subtype for specific categorization */
+  subtype?: string;
   category: string;
   link?: string;
   important: boolean;
+  /** Event name for display */
+  name?: string;
 }
 
 /**

@@ -2,8 +2,8 @@ import React from 'react';
 
 export interface IconProps {
   name: 'bitcoin' | 'moon' | 'chart' | 'close' | 'menu' | 'search' | 'filter';
-  size?: 'sm' | 'md' | 'lg' | 'xl';
-  color?: 'bitcoin' | 'moon' | 'white' | 'gray' | 'inherit';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  color?: 'bitcoin' | 'moon' | 'white' | 'gray' | 'inherit' | 'success';
   className?: string;
 }
 
@@ -24,6 +24,7 @@ export const Icon: React.FC<IconProps> = ({
   className = '',
 }) => {
   const sizeClasses = {
+    xs: 'h-3 w-3',
     sm: 'h-4 w-4',
     md: 'h-5 w-5',
     lg: 'h-6 w-6',
@@ -36,6 +37,7 @@ export const Icon: React.FC<IconProps> = ({
     white: 'text-white',
     gray: 'text-gray-400',
     inherit: '',
+    success: 'text-green-400',
   };
 
   const classes = [

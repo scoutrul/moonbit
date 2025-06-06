@@ -35,52 +35,41 @@ interface BybitTickerData {
 
 // Bybit API Adapter implementation
 export class BybitAdapter implements DataAdapter {
-  private baseUrl = 'https://api.bybit.com';
+  private baseUrl = '/api'; // Используем наш локальный API
   
   getAvailableTimeframes(): string[] {
     return ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d', '1w', '1M'];
   }
 
   async getAvailableSymbols(): Promise<string[]> {
-    try {
-      const response = await fetch(`${this.baseUrl}/v5/market/instruments-info?category=spot`);
-      const data = await response.json();
-      
-      if (data.retCode === 0) {
-        return data.result.list
-          .filter((instrument: any) => instrument.quoteCoin === 'USDT')
-          .map((instrument: any) => instrument.symbol);
-      }
-      return ['BTCUSDT', 'ETHUSDT']; // fallback
-    } catch (error) {
-      console.error('Error fetching symbols:', error);
-      return ['BTCUSDT', 'ETHUSDT']; // fallback
-    }
+    // Возвращаем статический список для начала
+    return ['BTCUSDT', 'ETHUSDT'];
   }
 
   async fetchChartData(symbol: string, timeframe: string): Promise<BaseChartData[]> {
     try {
-      // Convert timeframe to Bybit format
-      const bybitTimeframe = this.convertTimeframe(timeframe);
+      // Convert timeframe to our API format
+      const apiTimeframe = this.convertTimeframe(timeframe);
       
       const response = await fetch(
-        `${this.baseUrl}/v5/market/kline?category=spot&symbol=${symbol}&interval=${bybitTimeframe}&limit=200`
+        `${this.baseUrl}/bitcoin/candles?timeframe=${apiTimeframe}&limit=200`
       );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       
       const data = await response.json();
       
-      if (data.retCode === 0 && data.result?.list) {
-        return data.result.list
-          .map((item: any[]) => ({
-            time: Math.floor(parseInt(item[0]) / 1000) as any, // Convert to UTCTimestamp
-            open: parseFloat(item[1]),
-            high: parseFloat(item[2]),
-            low: parseFloat(item[3]),
-            close: parseFloat(item[4]),
-            volume: parseFloat(item[5]),
-          }))
-          .reverse() // Bybit returns data in descending order
-          .sort((a, b) => a.time - b.time); // Ensure ascending order
+      if (Array.isArray(data)) {
+        return data.map((item: any) => ({
+          time: item.time as any, // API уже возвращает правильный timestamp
+          open: parseFloat(item.open),
+          high: parseFloat(item.high),
+          low: parseFloat(item.low),
+          close: parseFloat(item.close),
+          volume: parseFloat(item.volume || '0'),
+        }));
       }
       
       return [];
@@ -92,25 +81,21 @@ export class BybitAdapter implements DataAdapter {
 
   async fetchCurrencyInfo(symbol: string): Promise<CurrencyInfo> {
     try {
-      const response = await fetch(
-        `${this.baseUrl}/v5/market/tickers?category=spot&symbol=${symbol}`
-      );
+      const response = await fetch(`${this.baseUrl}/bitcoin/price`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       
       const data = await response.json();
       
-      if (data.retCode === 0 && data.result?.list?.[0]) {
-        const ticker = data.result.list[0];
-        
-        return {
-          symbol: symbol.replace('USDT', ''),
-          name: this.getSymbolName(symbol),
-          currentPrice: parseFloat(ticker.lastPrice),
-          change24h: parseFloat(ticker.priceChange24h || '0'),
-          changePercent24h: parseFloat(ticker.priceChangePercent24h || '0'),
-        };
-      }
-      
-      throw new Error('Invalid ticker data');
+      return {
+        symbol: symbol.replace('USDT', ''),
+        name: this.getSymbolName(symbol),
+        currentPrice: parseFloat(data.price),
+        change24h: parseFloat(data.change_24h || '0'),
+        changePercent24h: parseFloat(data.change_percentage_24h || '0'),
+      };
     } catch (error) {
       console.error('Error fetching currency info:', error);
       // Return default data on error
@@ -125,24 +110,24 @@ export class BybitAdapter implements DataAdapter {
   }
 
   private convertTimeframe(timeframe: string): string {
-    // Convert our internal timeframe format to Bybit format
+    // Convert our internal timeframe format to API format
     const timeframeMap: Record<string, string> = {
-      '1m': '1',
-      '3m': '3',
-      '5m': '5',
-      '15m': '15',
-      '30m': '30',
-      '1h': '60',
-      '2h': '120',
-      '4h': '240',
-      '6h': '360',
-      '12h': '720',
-      '1d': 'D',
-      '1w': 'W',
-      '1M': 'M',
+      '1m': '1m',
+      '3m': '3m',
+      '5m': '5m',
+      '15m': '15m',
+      '30m': '30m',
+      '1h': '1h',
+      '2h': '2h',
+      '4h': '4h',
+      '6h': '6h',
+      '12h': '12h',
+      '1d': '1d',
+      '1w': '1w',
+      '1M': '1M',
     };
     
-    return timeframeMap[timeframe] || 'D';
+    return timeframeMap[timeframe] || '1d';
   }
 
   private getSymbolName(symbol: string): string {

@@ -6,6 +6,7 @@ services:
     container_name: moonbit-client
     environment:
       - NODE_ENV=development
+      - DOCKER_ENV=true
       - CHOKIDAR_USEPOLLING=true
       - VITE_API_URL=http://server:3001/api
       # Используем server:3001 для обращения к серверу из клиентского контейнера

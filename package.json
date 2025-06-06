@@ -1,7 +1,7 @@
 {
   "name": "moonbit",
   "version": "1.0.0",
-  "description": "Анализ взаимосвязи между биткоином и лунными фазами",
+  "description": "MoonBit (Мунбит) - инновационная платформа для анализа криптовалют с учетом лунных фаз и астрономических событий",
   "main": "index.js",
   "scripts": {
     "client": "cd bitcoin-moon/client && npm run dev",
