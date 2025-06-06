@@ -7,19 +7,21 @@ import ErrorBoundary from './components/ErrorBoundary';
 import DevPanel from './components/DevPanel';
 
 function App() {
-  const [darkMode, setDarkMode] = useState(false);
+  // Правильная инициализация темы с самого начала
+  const [darkMode, setDarkMode] = useState(() => {
+    // Проверяем localStorage и system preference сразу при инициализации
+    const savedMode = localStorage.getItem('darkMode');
+    if (savedMode !== null) {
+      return savedMode === 'true';
+    }
+    // Fallback к системным настройкам
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
 
   useEffect(() => {
-    // Проверяем предпочтение темной темы
-    const isDarkMode =
-      localStorage.getItem('darkMode') === 'true' ||
-      window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-    setDarkMode(isDarkMode);
-  }, []);
-
-  useEffect(() => {
-    // Применяем/удаляем класс dark к body
+    console.log('🌙 Начальная инициализация темы:', darkMode ? 'темная' : 'светлая');
+    
+    // Применяем/удаляем класс dark к documentElement
     if (darkMode) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('darkMode', 'true');

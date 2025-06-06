@@ -51,7 +51,7 @@ const Dashboard = () => {
               fallbackComponent={null}
               onError={handleError}
             >
-              {/* Передаем только timeframe, данные загружает сам компонент графика */}
+              {/* Убираем onPriceUpdate - больше не нужен */}
               <BitcoinChartWithLunarPhases 
                 timeframe={timeframe} 
               />
