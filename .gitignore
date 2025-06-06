@@ -26,6 +26,7 @@ yarn-error.log*
 pnpm-debug.log*
 logs/
 *.log
+server-error.log
 
 # База данных SQLite
 *.sqlite
@@ -59,7 +60,20 @@ Thumbs.db
 *.dump
 *.out
 
-# Артефакты e2e тестов Playwright
-/tests/
-/test-results/*
+# Playwright тесты и результаты
+/test-results/
+/playwright-report/
+/tests/e2e/artifacts/
 **/screenshot.png
+**/trace.zip
+**/video.webm
+**/*.har
+**/*.zip
+
+# Docker временные файлы
+docker-compose.override.yml
+
+# Временные файлы разработки
+.vite-inspect/
+debug.log
+audit.json
