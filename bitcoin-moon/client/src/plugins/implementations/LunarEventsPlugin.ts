@@ -60,6 +60,27 @@ export const createLunarEventsPlugin = (userConfig?: Partial<LunarEventsConfig>)
     let currentEvents: Event[] = [];
     
     try {
+      // Проверяем что контекст и график доступны
+      if (!context || !context.chart) {
+        throw new Error('Chart context is not available');
+      }
+
+      // Проверяем что график не поврежден
+      if (typeof context.chart.addLineSeries !== 'function') {
+        throw new Error('Chart API is not valid or disposed');
+      }
+
+      // Добавляем дополнительные проверки на стабильность графика
+      try {
+        // Пытаемся получить scale чтобы убедиться что график активен
+        const timeScale = context.chart.timeScale();
+        if (!timeScale) {
+          throw new Error('Chart timeScale is not available');
+        }
+      } catch (scaleError) {
+        throw new Error('Chart is not fully initialized or disposed');
+      }
+      
       // Create a transparent line series for markers
       // This is the standard approach in Lightweight Charts for adding markers
       const markersLine = context.chart.addLineSeries({
@@ -73,10 +94,18 @@ export const createLunarEventsPlugin = (userConfig?: Partial<LunarEventsConfig>)
       
       markersApi = markersLine;
       
-      console.log('🌙 LunarEventsPlugin: Initialized with config', config);
+      console.log('🌙 LunarEventsPlugin: Initialized successfully with config', config);
       
     } catch (error) {
       console.error('❌ LunarEventsPlugin: Initialization error:', error);
+      // Cleanup if partially initialized
+      if (markersApi && context?.chart) {
+        try {
+          context.chart.removeSeries(markersApi);
+        } catch (cleanupError) {
+          console.warn('⚠️ Failed to cleanup after error:', cleanupError);
+        }
+      }
       throw error;
     }
     
@@ -84,6 +113,12 @@ export const createLunarEventsPlugin = (userConfig?: Partial<LunarEventsConfig>)
       render: (events: Event[]) => {
         if (!markersApi || !isActive) {
           console.warn('⚠️ LunarEventsPlugin: Cannot render, plugin not active');
+          return;
+        }
+
+        // Проверяем что график все еще доступен
+        if (!context?.chart) {
+          console.warn('⚠️ LunarEventsPlugin: Chart context not available during render');
           return;
         }
         
@@ -98,10 +133,13 @@ export const createLunarEventsPlugin = (userConfig?: Partial<LunarEventsConfig>)
             .map(event => createMarkerFromEvent(event, config))
             .filter(marker => marker !== null) as SeriesMarker<UTCTimestamp>[];
           
-          // Set markers on the series
-          markersApi.setMarkers(markers);
-          
-          console.log(`🌙 LunarEventsPlugin: Rendered ${markers.length} lunar events (${lunarEvents.length} total)`);
+          // Set markers on the series (with safety check)
+          if (markersApi && typeof markersApi.setMarkers === 'function') {
+            markersApi.setMarkers(markers);
+            console.log(`🌙 LunarEventsPlugin: Rendered ${markers.length} lunar events (${lunarEvents.length} total)`);
+          } else {
+            console.warn('⚠️ LunarEventsPlugin: markersApi is not valid for setMarkers');
+          }
           
         } catch (error) {
           console.error('❌ LunarEventsPlugin: Render error:', error);
@@ -109,16 +147,29 @@ export const createLunarEventsPlugin = (userConfig?: Partial<LunarEventsConfig>)
       },
       
       cleanup: () => {
-        if (markersApi && context.chart) {
+        if (markersApi && context?.chart) {
           try {
-            context.chart.removeSeries(markersApi);
+            // Проверяем что серия все еще существует
+            if (typeof context.chart.removeSeries === 'function') {
+              context.chart.removeSeries(markersApi);
+              console.log('🧹 LunarEventsPlugin: Cleaned up successfully');
+            } else {
+              console.warn('⚠️ LunarEventsPlugin: Chart.removeSeries not available during cleanup');
+            }
+          } catch (error) {
+            console.error('❌ LunarEventsPlugin: Cleanup error:', error);
+          } finally {
+            // Всегда сбрасываем локальное состояние
             markersApi = null;
             isActive = false;
             currentEvents = [];
-            console.log('🧹 LunarEventsPlugin: Cleaned up successfully');
-          } catch (error) {
-            console.error('❌ LunarEventsPlugin: Cleanup error:', error);
           }
+        } else {
+          // Если нет markersApi или context, просто сбрасываем состояние
+          markersApi = null;
+          isActive = false;
+          currentEvents = [];
+          console.log('🧹 LunarEventsPlugin: State reset (no cleanup needed)');
         }
       },
       

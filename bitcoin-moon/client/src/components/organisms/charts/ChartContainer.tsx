@@ -269,7 +269,7 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
   };
 
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className={`space-y-4 ${className}`} data-testid="chart-container">
       {/* Информационная панель */}
       <div className="bg-dark-card border border-dark-border rounded-lg p-4">
         <div className="flex items-center justify-between mb-2">

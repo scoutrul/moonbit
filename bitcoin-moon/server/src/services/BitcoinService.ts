@@ -365,6 +365,127 @@ export class BitcoinService implements IBitcoinService {
   }
 
   /**
+   * Получает исторические данные свечей с пагинацией для infinite scroll
+   * @param {string} timeframe - Временной интервал (1d, 1h, etc.)
+   * @param {number} limit - Количество свечей за запрос
+   * @param {number} endTime - Время окончания для получения данных ДО этого времени (unix timestamp)
+   * @returns {Promise<Array<any>>} Исторические данные свечей
+   */
+  public async getCandlestickDataWithPagination(
+    timeframe: string = '1d', 
+    limit: number = 50, 
+    endTime?: number
+  ): Promise<Array<any>> {
+    try {
+      this.logger.info(`BitcoinService: запрос пагинированных данных свечей, таймфрейм: ${timeframe}, лимит: ${limit}, endTime: ${endTime}`);
+      
+      // Пытаемся получить реальные данные с Bybit API
+      const realData = await this.getBybitCandlestickDataWithPagination(timeframe, limit, endTime);
+      
+      if (realData && realData.length > 0) {
+        this.logger.info(`BitcoinService: получено ${realData.length} реальных свечей с Bybit`);
+        return realData;
+      } else {
+        this.logger.warn('BitcoinService: Bybit API недоступен, используем моковые данные');
+        return this.generatePaginatedCandlestickData(timeframe, limit, endTime);
+      }
+    } catch (error) {
+      this.logger.error('BitcoinService: ошибка при получении пагинированных свечей', { error });
+      // В случае ошибки генерируем моковые данные
+      this.logger.warn('BitcoinService: переключаемся на моковые данные из-за ошибки');
+      return this.generatePaginatedCandlestickData(timeframe, limit, endTime);
+    }
+  }
+
+  /**
+   * Получает реальные данные свечей с Bybit API с пагинацией
+   * @param {string} timeframe - Временной интервал
+   * @param {number} limit - Количество свечей
+   * @param {number} endTime - Время окончания (unix timestamp)
+   * @returns {Promise<Array<any>>} Реальные данные свечей
+   * @private
+   */
+  private async getBybitCandlestickDataWithPagination(timeframe: string, limit: number, endTime?: number): Promise<Array<any>> {
+    try {
+      this.logger.info(`BitcoinService: запрос реальных данных с Bybit API для пагинации`);
+      
+      // Подготовка заголовков для аутентификации
+      const timestamp = Date.now().toString();
+      const recvWindow = '5000';
+      
+      // Создание подписи
+      const queryString = `api_key=${this.bybitApiKey}&recv_window=${recvWindow}&timestamp=${timestamp}`;
+      const signature = crypto
+        .createHmac('sha256', this.bybitApiSecret)
+        .update(queryString)
+        .digest('hex');
+      
+      // Настройка заголовков
+      const headers = {
+        'X-BAPI-API-KEY': this.bybitApiKey,
+        'X-BAPI-TIMESTAMP': timestamp,
+        'X-BAPI-RECV-WINDOW': recvWindow,
+        'X-BAPI-SIGN': signature
+      };
+      
+      // Конвертируем таймфрейм для API Bybit
+      let interval = '1';
+      switch(timeframe) {
+        case '1m': interval = '1'; break;
+        case '5m': interval = '5'; break;
+        case '15m': interval = '15'; break;
+        case '30m': interval = '30'; break;
+        case '1h': interval = '60'; break;
+        case '4h': interval = '240'; break;
+        case '1d': interval = 'D'; break;
+        case '1w': interval = 'W'; break;
+        default: interval = 'D';
+      }
+      
+      // Параметры для запроса с пагинацией
+      const params: any = {
+        category: 'spot',
+        symbol: 'BTCUSDT',
+        interval,
+        limit
+      };
+      
+      // Если указано endTime, добавляем его как end параметр
+      if (endTime) {
+        params.end = endTime * 1000; // Bybit использует миллисекунды
+      }
+      
+      // Получение исторических данных
+      const response = await axios.get(`${this.bybitApiUrl}/v5/market/kline`, {
+        params,
+        headers
+      });
+      
+      if (response.data && response.data.result && response.data.result.list && response.data.result.list.length > 0) {
+        // Преобразуем данные в нужный формат
+        // Bybit возвращает данные в формате [timestamp, open, high, low, close, volume, turnover]
+        const candlestickData = response.data.result.list.map((item: string[]) => ({
+          time: Math.floor(parseInt(item[0]) / 1000), // конвертируем миллисекунды в секунды
+          open: parseFloat(item[1]),
+          high: parseFloat(item[2]),
+          low: parseFloat(item[3]),
+          close: parseFloat(item[4]),
+          volume: parseFloat(item[5])
+        })).reverse(); // Разворачиваем массив, так как Bybit возвращает данные от новых к старым
+        
+        this.logger.debug(`BitcoinService: получено ${candlestickData.length} реальных свечей с Bybit для пагинации`);
+        
+        return candlestickData;
+      } else {
+        throw new Error('Некорректный ответ от Bybit API при запросе пагинированных свечей');
+      }
+    } catch (error) {
+      this.logger.error('BitcoinService: ошибка при получении пагинированных свечей с Bybit', { error });
+      throw error;
+    }
+  }
+
+  /**
    * Генерирует моковые данные свечей
    * @param {string} timeframe - Временной интервал
    * @param {number} limit - Количество свечей
@@ -411,6 +532,65 @@ export class BitcoinService implements IBitcoinService {
       });
     }
     
+    return data;
+  }
+
+  /**
+   * Генерирует моковые данные свечей с пагинацией
+   * @param {string} timeframe - Временной интервал
+   * @param {number} limit - Количество свечей
+   * @param {number} endTime - Время окончания
+   * @returns {Array<any>} Массив данных свечей
+   * @private
+   */
+  private generatePaginatedCandlestickData(timeframe: string, limit: number, endTime?: number): Array<any> {
+    const data = [];
+    
+    // Определяем интервал времени в секундах
+    let intervalInSeconds;
+    switch(timeframe) {
+      case '1m': intervalInSeconds = 60; break;
+      case '5m': intervalInSeconds = 5 * 60; break;
+      case '15m': intervalInSeconds = 15 * 60; break;
+      case '30m': intervalInSeconds = 30 * 60; break;
+      case '1h': intervalInSeconds = 60 * 60; break;
+      case '4h': intervalInSeconds = 4 * 60 * 60; break;
+      case '1d': intervalInSeconds = 24 * 60 * 60; break;
+      case '1w': intervalInSeconds = 7 * 24 * 60 * 60; break;
+      default: intervalInSeconds = 24 * 60 * 60;
+    }
+    
+    // Если endTime не указан, используем текущее время
+    const currentEndTime = endTime || Math.floor(Date.now() / 1000);
+    
+    // Генерируем данные, двигаясь назад от endTime
+    for (let i = 0; i < limit; i++) {
+      const timestamp = currentEndTime - (i * intervalInSeconds);
+      
+      // Базовая цена с небольшой волатильностью и трендом
+      const basePrice = 45000 + Math.sin(timestamp / (86400 * 30)) * 5000; // Месячный цикл
+      const volatility = basePrice * 0.02; // 2% волатильность
+      
+      const open = basePrice + (Math.random() - 0.5) * volatility;
+      const close = open + (Math.random() - 0.5) * volatility;
+      const high = Math.max(open, close) + Math.random() * volatility * 0.3;
+      const low = Math.min(open, close) - Math.random() * volatility * 0.3;
+      const volume = Math.round(1000 + Math.random() * 9000);
+      
+      data.push({
+        time: timestamp,
+        open: Math.round(open * 100) / 100,
+        high: Math.round(high * 100) / 100,
+        low: Math.round(low * 100) / 100,
+        close: Math.round(close * 100) / 100,
+        volume
+      });
+    }
+    
+    // Сортируем по времени (от старых к новым)
+    data.reverse();
+    
+    this.logger.debug(`BitcoinService: сгенерировано ${data.length} свечей для пагинации`);
     return data;
   }
 

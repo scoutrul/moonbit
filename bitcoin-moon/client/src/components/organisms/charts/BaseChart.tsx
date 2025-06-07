@@ -67,8 +67,10 @@ export const BaseChart: React.FC<BaseChartProps> = ({
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [chartReady, setChartReady] = useState(false);
+  const isUnmountedRef = useRef(false);
 
-  // Plugin system integration
+  // Plugin system integration - НО ТОЛЬКО после полной инициализации графика
   const {
     pluginManager,
     isReady: pluginsReady,
@@ -77,7 +79,7 @@ export const BaseChart: React.FC<BaseChartProps> = ({
     renderEvents,
     onTimeframeChange,
     loading: pluginsLoading
-  } = useEventPlugins(chartRef.current, {
+  } = useEventPlugins(enablePlugins && chartReady ? chartRef.current : null, {
     timeframe,
     config: pluginConfig,
     debug: import.meta.env?.DEV || false
@@ -85,14 +87,14 @@ export const BaseChart: React.FC<BaseChartProps> = ({
 
   // Visible range change handler
   const handleVisibleRangeChange = useCallback((range: { from: UTCTimestamp; to: UTCTimestamp } | null) => {
-    if (onVisibleRangeChange) {
+    if (onVisibleRangeChange && !isUnmountedRef.current) {
       onVisibleRangeChange(range);
     }
   }, [onVisibleRangeChange]);
 
   // Infinite scroll handler
   const handleLogicalRangeChange = useCallback((logicalRange: LogicalRange | null) => {
-    if (!enableInfiniteScroll || !onLoadMoreData || !logicalRange || isLoadingMore) {
+    if (!enableInfiniteScroll || !onLoadMoreData || !logicalRange || isLoadingMore || isUnmountedRef.current) {
       return;
     }
 
@@ -102,7 +104,11 @@ export const BaseChart: React.FC<BaseChartProps> = ({
       onLoadMoreData('left', logicalRange);
       
       // Reset loading state after a delay (will be managed by parent component)
-      setTimeout(() => setIsLoadingMore(false), 1000);
+      setTimeout(() => {
+        if (!isUnmountedRef.current) {
+          setIsLoadingMore(false);
+        }
+      }, 1000);
     }
     
     // Check if we need to load more data on the right (future data, if applicable)
@@ -111,18 +117,25 @@ export const BaseChart: React.FC<BaseChartProps> = ({
       setIsLoadingMore(true);
       onLoadMoreData('right', logicalRange);
       
-      setTimeout(() => setIsLoadingMore(false), 1000);
+      setTimeout(() => {
+        if (!isUnmountedRef.current) {
+          setIsLoadingMore(false);
+        }
+      }, 1000);
     }
   }, [enableInfiniteScroll, onLoadMoreData, loadMoreThreshold, isLoadingMore, data.length]);
 
-  // Chart initialization
+  // Единый useEffect для полной инициализации графика
   useEffect(() => {
+    // Устанавливаем флаг что компонент смонтирован
+    isUnmountedRef.current = false;
+
     if (isInitialized) {
       return;
     }
 
-    // Используем setTimeout чтобы дождаться когда ref будет установлен
-    const initializeChart = () => {
+    const initializeChart = async () => {
+      // Ждем пока ref будет установлен
       if (!chartContainerRef.current) {
         setTimeout(initializeChart, 10);
         return;
@@ -167,6 +180,12 @@ export const BaseChart: React.FC<BaseChartProps> = ({
 
         const chart = createChart(chartContainerRef.current, chartOptions);
 
+        // Проверяем что компонент еще не размонтирован
+        if (isUnmountedRef.current) {
+          chart.remove();
+          return;
+        }
+
         const candlestickSeries = chart.addCandlestickSeries({
           upColor: '#10B981', // green-500
           downColor: '#EF4444', // red-500
@@ -176,9 +195,25 @@ export const BaseChart: React.FC<BaseChartProps> = ({
           wickUpColor: '#10B981',
         });
 
+        // Сохраняем ссылки
         chartRef.current = chart;
         seriesRef.current = candlestickSeries;
-        setIsInitialized(true);
+
+        // Устанавливаем данные если они есть
+        if (data && data.length > 0) {
+          const sortedData = [...data].sort((a, b) => a.time - b.time);
+          const uniqueData = sortedData.filter((item, index, arr) => {
+            return index === 0 || item.time !== arr[index - 1].time;
+          });
+          candlestickSeries.setData(uniqueData as CandlestickData[]);
+        }
+
+        // Подписываемся на события
+        chart.timeScale().subscribeVisibleTimeRangeChange(handleVisibleRangeChange);
+        
+        if (enableInfiniteScroll) {
+          chart.timeScale().subscribeVisibleLogicalRangeChange(handleLogicalRangeChange);
+        }
 
         // Set initial visible range if provided
         if (initialVisibleRange) {
@@ -188,7 +223,7 @@ export const BaseChart: React.FC<BaseChartProps> = ({
         // Auto resize handling
         if (autosize) {
           const handleResize = () => {
-            if (chartContainerRef.current && chartRef.current) {
+            if (chartContainerRef.current && chartRef.current && !isUnmountedRef.current) {
               chartRef.current.applyOptions({
                 width: chartContainerRef.current.clientWidth,
               });
@@ -196,102 +231,89 @@ export const BaseChart: React.FC<BaseChartProps> = ({
           };
 
           window.addEventListener('resize', handleResize);
-          
-          // Cleanup function
-          return () => {
-            window.removeEventListener('resize', handleResize);
-            if (chart) {
-              chart.remove();
-            }
-          };
         }
+
+        // Уведомляем о готовности графика
+        setIsInitialized(true);
+        setChartReady(true);
+
+        // Диагностика: проверяем что canvas создался
+        setTimeout(() => {
+          if (chartContainerRef.current && !isUnmountedRef.current) {
+            const canvasElements = chartContainerRef.current.querySelectorAll('canvas');
+            console.log(`🎨 BaseChart: Canvas элементов создано: ${canvasElements.length}`);
+            if (canvasElements.length > 0) {
+              const firstCanvas = canvasElements[0] as HTMLCanvasElement;
+              console.log(`🎨 BaseChart: Первый canvas размеры: ${firstCanvas.width}x${firstCanvas.height}px`);
+              console.log(`🎨 BaseChart: Canvas видимый:`, firstCanvas.offsetWidth > 0 && firstCanvas.offsetHeight > 0);
+            } else {
+              console.warn('⚠️ BaseChart: Canvas элементы не созданы!');
+              console.log('🔍 BaseChart: Контейнер размеры:', chartContainerRef.current.offsetWidth, 'x', chartContainerRef.current.offsetHeight);
+              console.log('🔍 BaseChart: Контейнер innerHTML:', chartContainerRef.current.innerHTML.substring(0, 200));
+            }
+          }
+        }, 200);
+
+        // Уведомляем родительский компонент
+        if (onChartReady) {
+          onChartReady(chart);
+        }
+
+        // Auto-fit content
+        if (!initialVisibleRange && data && data.length > 0) {
+          setTimeout(() => {
+            if (chartRef.current && !isUnmountedRef.current) {
+              chartRef.current.timeScale().fitContent();
+            }
+          }, 100);
+        }
+
       } catch (error) {
         console.error('❌ BaseChart: Error during chart initialization:', error);
+        if (!isUnmountedRef.current) {
+          setIsInitialized(false);
+          setChartReady(false);
+        }
       }
     };
 
-    // Запускаем инициализацию с небольшой задержкой
+    // Запускаем инициализацию
     setTimeout(initializeChart, 0);
 
     // Cleanup function
     return () => {
+      isUnmountedRef.current = true;
+      
       if (chartRef.current) {
-        chartRef.current.remove();
+        try {
+          // Отписываемся от событий
+          chartRef.current.timeScale().unsubscribeVisibleTimeRangeChange(handleVisibleRangeChange);
+          if (enableInfiniteScroll) {
+            chartRef.current.timeScale().unsubscribeVisibleLogicalRangeChange(handleLogicalRangeChange);
+          }
+          
+          // Удаляем график
+          chartRef.current.remove();
+        } catch (error) {
+          console.warn('Error during chart cleanup:', error);
+        }
+        
         chartRef.current = null;
         seriesRef.current = null;
-        setIsInitialized(false);
       }
-    };
-  }, [width, height, autosize, enableZoomPersistence, initialVisibleRange]);
-
-  // Separate effect for subscribing to chart events after initialization
-  useEffect(() => {
-    if (!chartRef.current || !isInitialized) return;
-
-    const chart = chartRef.current;
-    
-    // Subscribe to visible time range changes
-    chart.timeScale().subscribeVisibleTimeRangeChange(handleVisibleRangeChange);
-    
-    // Subscribe to logical range changes for infinite scroll
-    if (enableInfiniteScroll) {
-      chart.timeScale().subscribeVisibleLogicalRangeChange(handleLogicalRangeChange);
-    }
-
-    return () => {
-      // Cleanup subscriptions
-      try {
-        chart.timeScale().unsubscribeVisibleTimeRangeChange(handleVisibleRangeChange);
-        if (enableInfiniteScroll) {
-          chart.timeScale().unsubscribeVisibleLogicalRangeChange(handleLogicalRangeChange);
-        }
-      } catch (error) {
-        // Ignore cleanup errors
+      
+      if (autosize) {
+        window.removeEventListener('resize', () => {});
       }
+      
+      setIsInitialized(false);
+      setChartReady(false);
     };
-  }, [isInitialized, handleVisibleRangeChange, handleLogicalRangeChange, enableInfiniteScroll]);
+  }, [width, height, autosize, enableZoomPersistence, initialVisibleRange, enableInfiniteScroll, handleVisibleRangeChange, handleLogicalRangeChange]);
 
-  // Separate effect for notifying parent when chart is ready
+  // Отдельный effect для обновления данных
   useEffect(() => {
-    if (!chartRef.current || !isInitialized || !onChartReady) return;
-
-    onChartReady(chartRef.current);
-  }, [isInitialized, onChartReady]);
-
-  // Plugin registration
-  useEffect(() => {
-    if (!enablePlugins || !pluginsReady || !plugins.length) return;
-
-    const registerPlugins = async () => {
-      for (const plugin of plugins) {
-        try {
-          await registerPlugin(plugin);
-        } catch (error) {
-          console.error(`Failed to register plugin ${plugin.id}:`, error);
-        }
-      }
-    };
-
-    registerPlugins();
-  }, [enablePlugins, pluginsReady, plugins, registerPlugin]);
-
-  // Event rendering
-  useEffect(() => {
-    if (!enablePlugins || !pluginsReady || !events.length) return;
-
-    renderEvents(events);
-  }, [enablePlugins, pluginsReady, events, renderEvents]);
-
-  // Timeframe changes
-  useEffect(() => {
-    if (!enablePlugins || !pluginsReady) return;
-
-    onTimeframeChange(timeframe);
-  }, [enablePlugins, pluginsReady, timeframe, onTimeframeChange]);
-
-  // Data updates - исправляем сортировку и убираем лишние зависимости
-  useEffect(() => {
-    if (!seriesRef.current || !data || data.length === 0) {
+    if (!seriesRef.current || !data || data.length === 0 || !isInitialized || isUnmountedRef.current) {
       return;
     }
 
@@ -306,53 +328,104 @@ export const BaseChart: React.FC<BaseChartProps> = ({
       
       seriesRef.current.setData(uniqueData as CandlestickData[]);
       
-      if (onDataUpdate) {
+      if (onDataUpdate && !isUnmountedRef.current) {
         onDataUpdate(uniqueData);
       }
 
-      // Auto-fit content on first load if no initial range specified
-      if (!initialVisibleRange && chartRef.current) {
-        // Small delay to ensure data is rendered
-        setTimeout(() => {
-          if (chartRef.current) {
-            chartRef.current.timeScale().fitContent();
-          }
-        }, 100);
-      }
     } catch (error) {
       console.error('❌ BaseChart: Error updating chart data:', error);
     }
-  }, [data, initialVisibleRange]); // Убираем onDataUpdate из зависимостей
+  }, [data, isInitialized]);
+
+  // Plugin registration - ТОЛЬКО после готовности графика
+  useEffect(() => {
+    if (!enablePlugins || !chartReady || !pluginsReady || !plugins.length || isUnmountedRef.current) {
+      return;
+    }
+
+    const registerPlugins = async () => {
+      try {
+        // Дополнительная проверка что график все еще активен
+        if (!chartRef.current || isUnmountedRef.current) {
+          console.warn('⚠️ BaseChart: Chart not available for plugin registration');
+          return;
+        }
+
+        // Проверяем стабильность графика
+        try {
+          const timeScale = chartRef.current.timeScale();
+          if (!timeScale) {
+            console.warn('⚠️ BaseChart: Chart timeScale not available for plugins');
+            return;
+          }
+        } catch (error) {
+          console.warn('⚠️ BaseChart: Chart not stable for plugin registration:', error);
+          return;
+        }
+
+        for (const plugin of plugins) {
+          if (!isUnmountedRef.current && chartRef.current) {
+            await registerPlugin(plugin);
+          }
+        }
+      } catch (error) {
+        console.error('Error registering plugins:', error);
+      }
+    };
+
+    // Увеличиваем задержку для стабилизации графика
+    setTimeout(() => {
+      if (!isUnmountedRef.current && chartRef.current) {
+        registerPlugins();
+      }
+    }, 500); // Увеличено с 100 до 500ms
+
+  }, [enablePlugins, chartReady, pluginsReady, plugins, registerPlugin]);
+
+  // Event rendering - ТОЛЬКО после готовности плагинов
+  useEffect(() => {
+    if (!enablePlugins || !chartReady || !pluginsReady || !events.length || isUnmountedRef.current) {
+      return;
+    }
+
+    try {
+      renderEvents(events);
+    } catch (error) {
+      console.error('Error rendering events:', error);
+    }
+  }, [enablePlugins, chartReady, pluginsReady, events, renderEvents]);
+
+  // Timeframe changes
+  useEffect(() => {
+    if (!enablePlugins || !chartReady || !pluginsReady || isUnmountedRef.current) {
+      return;
+    }
+
+    try {
+      onTimeframeChange(timeframe);
+    } catch (error) {
+      console.error('Error changing timeframe:', error);
+    }
+  }, [enablePlugins, chartReady, pluginsReady, timeframe, onTimeframeChange]);
 
   // Chart utility methods
   const resetZoom = useCallback(() => {
-    if (chartRef.current) {
+    if (chartRef.current && !isUnmountedRef.current) {
       chartRef.current.timeScale().resetTimeScale();
     }
   }, []);
 
   const fitContent = useCallback(() => {
-    if (chartRef.current) {
+    if (chartRef.current && !isUnmountedRef.current) {
       chartRef.current.timeScale().fitContent();
     }
   }, []);
 
   const setVisibleRange = useCallback((range: { from: UTCTimestamp; to: UTCTimestamp }) => {
-    if (chartRef.current) {
+    if (chartRef.current && !isUnmountedRef.current) {
       chartRef.current.timeScale().setVisibleRange(range);
     }
   }, []);
-
-  // Export utility functions (can be accessed via ref)
-  useEffect(() => {
-    if (chartRef.current && onChartReady) {
-      const chart = chartRef.current;
-      // Add utility methods to chart instance
-      (chart as any).resetZoom = resetZoom;
-      (chart as any).fitContent = fitContent;
-      (chart as any).setVisibleRange = setVisibleRange;
-    }
-  }, [isInitialized, resetZoom, fitContent, setVisibleRange]);
 
   // Error handling
   if (error || pluginError) {

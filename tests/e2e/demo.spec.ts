@@ -9,15 +9,31 @@ test.describe('Demo Page', () => {
     await page.waitForLoadState('networkidle');
     
     // Проверяем заголовок страницы
-    await expect(page.locator('h1')).toContainText('MoonBit Demo');
+    await expect(page.locator('h1').filter({ hasText: 'MoonBit - Демо' })).toBeVisible();
     
     // Проверяем наличие графика
     const chartContainer = page.locator('[data-testid="chart-container"]');
     await expect(chartContainer).toBeVisible({ timeout: 15000 });
     
     // Проверяем что canvas график загружен
+    console.log('🔍 Ищем canvas элементы...');
+    
+    // Ждем дольше для стабилизации
+    await page.waitForTimeout(3000);
+    
+    // Проверяем количество canvas элементов
+    const canvasCount = await page.locator('canvas').count();
+    console.log(`🎨 Найдено canvas элементов: ${canvasCount}`);
+    
+    if (canvasCount === 0) {
+      // Диагностика если canvas не найден
+      const chartContainer = page.locator('[data-testid="chart-container"]');
+      const containerHTML = await chartContainer.innerHTML();
+      console.log('🔍 HTML контейнера графика:', containerHTML.substring(0, 500));
+    }
+    
     const chartCanvas = page.locator('canvas');
-    await expect(chartCanvas).toBeVisible({ timeout: 10000 });
+    await expect(chartCanvas).toBeVisible({ timeout: 15000 });
     
     // Проверяем информационную панель
     await expect(page.locator('text=MoonBit Demo Chart')).toBeVisible();

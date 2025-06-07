@@ -23,10 +23,10 @@ const Header = ({ darkMode, toggleDarkMode }) => {
           </a>
           
           <a 
-            href="/demo" 
+            href="/real-data" 
             className="mr-4 text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400"
           >
-            Демо
+            Bitcoin Demo
           </a>
           
           <button

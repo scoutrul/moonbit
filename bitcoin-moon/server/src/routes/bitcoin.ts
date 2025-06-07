@@ -21,13 +21,15 @@ router.get('/', (req: express.Request, res: express.Response) => {
       '/current': 'Текущая цена биткоина (алиас)',
       '/history': 'Исторические данные (параметры: days, currency)',
       '/analysis': 'Анализ цены биткоина',
-      '/candles': 'Данные свечей с Bybit (параметры: timeframe, limit)'
+      '/candles': 'Данные свечей с Bybit (параметры: timeframe, limit)',
+      '/infinite-scroll': 'Пагинированные данные свечей для infinite scroll (параметры: timeframe, limit, endTime)'
     },
     examples: {
       current_price: '/api/bitcoin/price',
       history_30_days: '/api/bitcoin/history?days=30&currency=usd',
       price_analysis: '/api/bitcoin/analysis',
-      daily_candles: '/api/bitcoin/candles?timeframe=1d&limit=100'
+      daily_candles: '/api/bitcoin/candles?timeframe=1d&limit=100',
+      infinite_scroll: '/api/bitcoin/infinite-scroll?timeframe=1d&limit=1000&endTime=1640995200'
     }
   });
 });
@@ -70,5 +72,15 @@ router.get('/analysis', bitcoinController.getPriceAnalysis.bind(bitcoinControlle
  * @access Public
  */
 router.get('/candles', bitcoinController.getBybitCandles.bind(bitcoinController));
+
+/**
+ * @route GET /api/bitcoin/infinite-scroll
+ * @description Получение пагинированных данных свечей для infinite scroll
+ * @param {string} timeframe - Временной интервал (1m, 5m, 15m, 30m, 1h, 4h, 1d, 1w) (опционально, по умолчанию 1d)
+ * @param {string} limit - Количество свечей (опционально, по умолчанию 50, максимум 1000)
+ * @param {string} endTime - Unix timestamp для получения данных ДО этого времени (опционально)
+ * @access Public
+ */
+router.get('/infinite-scroll', bitcoinController.getCandlestickPagination.bind(bitcoinController));
 
 export default router; 
