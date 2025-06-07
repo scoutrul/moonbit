@@ -77,3 +77,13 @@ docker-compose.override.yml
 .vite-inspect/
 debug.log
 audit.json
+
+# Тестовые артефакты и отладочные файлы
+tests/artifacts/
+*-debug.png
+*-screenshot.png
+chart-debug-*.png
+infinite-scroll-*.png
+simple-demo-*.png
+basechart-debug.*
+canvas-debug-*

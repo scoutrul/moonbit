@@ -102,7 +102,7 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
   // Auto refresh
   const [refreshTimer, setRefreshTimer] = useState<number | null>(null);
 
-  // Fetch chart data
+  // Fetch chart data with hybrid approach (API + Mock fallback)
   const fetchChartData = useCallback(async (forceRefresh = false) => {
     try {
       if (!forceRefresh) {
@@ -110,18 +110,46 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
       }
       setError(null);
 
-      // Fetch both chart data and currency info in parallel
-      const [chartDataResult, currencyInfoResult] = await Promise.all([
-        dataAdapter.fetchChartData(symbol, currentTimeframe),
-        dataAdapter.fetchCurrencyInfo(symbol),
-      ]);
+      // Try to fetch real data first
+      try {
+        const [chartDataResult, currencyInfoResult] = await Promise.all([
+          dataAdapter.fetchChartData(symbol, currentTimeframe),
+          dataAdapter.fetchCurrencyInfo(symbol),
+        ]);
 
-      setChartData(chartDataResult);
-      setCurrencyInfo(currencyInfoResult);
-      setEvents(generateMockLunarEvents(chartDataResult.length));
+        // Check if we got valid data
+        if (chartDataResult && chartDataResult.length > 0) {
+          console.log('✅ Demo: Используем реальные данные API', chartDataResult.length, 'точек');
+          setChartData(chartDataResult);
+          setCurrencyInfo(currencyInfoResult);
+          // Generate lunar events based on real data timeframe
+          const realEvents = generateMockLunarEvents(chartDataResult.length);
+          setEvents(realEvents);
+          return;
+        }
+      } catch (apiError) {
+        console.warn('⚠️ Demo: API недоступен, используем mock данные:', apiError);
+      }
+
+      // Fallback to high-quality mock data
+      console.log('📊 Demo: Используем качественные mock данные для демонстрации');
+      const mockData = generateMockData(200); // 200 дней данных
+      const mockCurrency: CurrencyInfo = {
+        symbol: 'BTC',
+        name: 'Bitcoin (Demo)',
+        currentPrice: mockData[mockData.length - 1]?.close || 50000,
+        change24h: 1200,
+        changePercent24h: 2.4,
+      };
+      const mockEvents = generateMockLunarEvents(mockData.length);
+
+      setChartData(mockData);
+      setCurrencyInfo(mockCurrency);
+      setEvents(mockEvents);
+
     } catch (err) {
-      console.error('Error fetching chart data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch chart data');
+      console.error('❌ Demo: Критическая ошибка:', err);
+      setError('Демо данные недоступны');
     } finally {
       setLoading(false);
     }
@@ -246,24 +274,38 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
       <div className="bg-dark-card border border-dark-border rounded-lg p-4">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-lg font-semibold text-moon-silver">
-            MoonBit Chart - Advanced Features
+            MoonBit Demo Chart - Все возможности
           </h3>
-          <div className="text-sm text-moon-muted">
-            Timeframe: {currentTimeframe}
+          <div className="flex items-center space-x-4 text-sm">
+            <div className="text-moon-muted">
+              Timeframe: <span className="text-moon-silver font-medium">{currentTimeframe}</span>
+            </div>
+            <div className="text-moon-muted">
+              Data: <span className="text-moon-silver font-medium">{chartData.length} точек</span>
+            </div>
+            {currencyInfo && (
+              <div className="text-moon-muted">
+                Price: <span className="text-green-400 font-medium">${currencyInfo.currentPrice.toLocaleString()}</span>
+              </div>
+            )}
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <div className="flex items-center space-x-2">
             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
             <span className="text-moon-silver">Infinite Scroll</span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-            <span className="text-moon-silver">Auto Refresh</span>
+            <span className="text-moon-silver">Масштабирование</span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-            <span className="text-moon-silver">Dynamic Loading</span>
+            <span className="text-moon-silver">Фазы луны</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+            <span className="text-moon-silver">Auto Refresh</span>
           </div>
         </div>
       </div>
@@ -284,11 +326,11 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
         // Show advanced features
         showAdvancedFeatures={true}
         
-        // Plugin system - TEMPORARILY DISABLED
-        enablePlugins={false}
-        plugins={[]}
-        pluginConfig={{}}
-        events={[]}
+        // Plugin system - ENABLED for demo
+        enablePlugins={true}
+        plugins={plugins}
+        pluginConfig={pluginConfig}
+        events={events}
         
         // Advanced features
         enableInfiniteScroll={true}
@@ -304,44 +346,48 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
       <div className="bg-dark-card border border-dark-border rounded-lg p-4">
         <div className="flex flex-wrap items-center gap-4">
           <button
-            className="px-4 py-2 bg-bitcoin text-white rounded-lg hover:bg-bitcoin/80 transition-colors text-sm"
-            onClick={() => {
-              // Используем utility функции графика
-              const chart = document.querySelector('canvas')?.closest('div') as any;
-              if (chart && chart.resetZoom) {
-                chart.resetZoom();
-              }
-            }}
+            className="px-4 py-2 bg-bitcoin text-white rounded-lg hover:bg-bitcoin/80 transition-colors text-sm flex items-center space-x-2"
+            onClick={handleRefresh}
+            disabled={loading}
           >
-            Reset Zoom
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>{loading ? 'Loading...' : 'Refresh Data'}</span>
           </button>
           
           <button
-            className="px-4 py-2 bg-dark-border text-moon-silver rounded-lg hover:bg-dark-border/80 transition-colors text-sm"
-            onClick={() => {
-              const chart = document.querySelector('canvas')?.closest('div') as any;
-              if (chart && chart.fitContent) {
-                chart.fitContent();
-              }
-            }}
+            className="px-4 py-2 bg-dark-border text-moon-silver rounded-lg hover:bg-dark-border/80 transition-colors text-sm flex items-center space-x-2"
+            onClick={() => setCurrentTimeframe(currentTimeframe === '1d' ? '1h' : '1d')}
           >
-            Fit Content
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Change Timeframe</span>
           </button>
           
+          <div className="h-6 w-px bg-dark-border"></div>
+          
           <div className="flex items-center space-x-2 text-sm">
-            <span className="text-moon-muted">Data points:</span>
-            <span className="text-moon-silver font-medium">{chartData.length}</span>
+            <span className="text-moon-muted">Данные:</span>
+            <span className="text-moon-silver font-medium">{chartData.length} свечей</span>
+          </div>
+          
+          <div className="flex items-center space-x-2 text-sm">
+            <span className="text-moon-muted">События:</span>
+            <span className="text-purple-400 font-medium">{events.length} лунных фаз</span>
           </div>
           
           <div className="flex items-center space-x-2 text-sm">
             <span className="text-moon-muted">Refresh:</span>
+            <div className={`w-2 h-2 rounded-full ${autoRefresh ? 'bg-green-400' : 'bg-gray-400'}`}></div>
             <span className="text-moon-silver font-medium">{autoRefresh ? 'ON' : 'OFF'}</span>
           </div>
           
           {isLoadingMore && (
             <div className="flex items-center space-x-2 text-sm text-bitcoin">
               <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-              <span>Loading...</span>
+              <span>Loading more...</span>
             </div>
           )}
         </div>
@@ -349,14 +395,53 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
 
       {/* Инструкции */}
       <div className="bg-dark-card border border-dark-border rounded-lg p-4">
-        <h4 className="text-md font-medium text-moon-silver mb-2">How to use:</h4>
-        <ul className="text-sm text-moon-muted space-y-1">
-          <li>• Scroll or drag the chart to see different time periods</li>
-          <li>• Use mouse wheel to zoom in/out</li>
-          <li>• Chart automatically loads more data when approaching edges</li>
-          <li>• Lunar events are displayed as colored markers</li>
-          <li>• Hover over markers to see event details</li>
-        </ul>
+        <h4 className="text-md font-medium text-moon-silver mb-3 flex items-center space-x-2">
+          <svg className="w-5 h-5 text-bitcoin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Возможности демо графика:</span>
+        </h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-moon-muted">
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <span className="text-green-400">🖱️</span>
+              <span>Перетаскивание мышью для навигации по времени</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-blue-400">🔍</span>
+              <span>Колесико мыши для масштабирования</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-purple-400">🌙</span>
+              <span>Лунные фазы отображаются как маркеры</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <span className="text-yellow-400">⏳</span>
+              <span>Infinite scroll - автозагрузка истории</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-orange-400">🔄</span>
+              <span>Автообновление данных каждые 30 сек</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-red-400">ℹ️</span>
+              <span>Hover на маркеры для деталей событий</span>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-4 p-3 bg-bitcoin/10 border border-bitcoin/20 rounded-lg">
+          <div className="flex items-center space-x-2 text-sm">
+            <svg className="w-4 h-4 text-bitcoin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            <span className="text-bitcoin font-medium">
+              Tip: Данные комбинируются из реального API и качественных mock данных для стабильной демонстрации
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Debug Info (Development Only) */}

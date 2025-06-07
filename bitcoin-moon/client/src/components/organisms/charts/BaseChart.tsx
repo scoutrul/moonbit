@@ -117,82 +117,110 @@ export const BaseChart: React.FC<BaseChartProps> = ({
 
   // Chart initialization
   useEffect(() => {
-    if (!chartContainerRef.current || isInitialized) return;
+    if (isInitialized) {
+      return;
+    }
 
-    const chartOptions = {
-      layout: {
-        textColor: '#E5E7EB', // moon-silver
-        background: { type: ColorType.Solid, color: '#1F2937' }, // dark-card
-      },
-      rightPriceScale: {
-        borderColor: '#374151', // dark-border
-      },
-      timeScale: {
-        borderColor: '#374151', // dark-border
-        timeVisible: true,
-        secondsVisible: false,
-        // Enable zoom and scroll
-        fixLeftEdge: false,
-        fixRightEdge: false,
-        lockVisibleTimeRangeOnResize: enableZoomPersistence,
-        // Default bar spacing and offsets for better UX
-        barSpacing: 6,
-        rightOffset: 12,
-      },
-      grid: {
-        vertLines: { color: '#374151' },
-        horzLines: { color: '#374151' },
-      },
-      crosshair: {
-        mode: 1, // CrosshairMode.Normal
-      },
-      width: autosize ? chartContainerRef.current.clientWidth : width,
-      height: height,
-      // Enable kinetic scrolling for better mobile UX
-      kineticScroll: {
-        touch: true,
-        mouse: true,
-      },
+    // Используем setTimeout чтобы дождаться когда ref будет установлен
+    const initializeChart = () => {
+      if (!chartContainerRef.current) {
+        setTimeout(initializeChart, 10);
+        return;
+      }
+
+      try {
+        const chartOptions = {
+          layout: {
+            textColor: '#E5E7EB', // moon-silver
+            background: { type: ColorType.Solid, color: '#1F2937' }, // dark-card
+          },
+          rightPriceScale: {
+            borderColor: '#374151', // dark-border
+          },
+          timeScale: {
+            borderColor: '#374151', // dark-border
+            timeVisible: true,
+            secondsVisible: false,
+            // Enable zoom and scroll
+            fixLeftEdge: false,
+            fixRightEdge: false,
+            lockVisibleTimeRangeOnResize: enableZoomPersistence,
+            // Default bar spacing and offsets for better UX
+            barSpacing: 6,
+            rightOffset: 12,
+          },
+          grid: {
+            vertLines: { color: '#374151' },
+            horzLines: { color: '#374151' },
+          },
+          crosshair: {
+            mode: 1, // CrosshairMode.Normal
+          },
+          width: autosize ? chartContainerRef.current.clientWidth : width,
+          height: height,
+          // Enable kinetic scrolling for better mobile UX
+          kineticScroll: {
+            touch: true,
+            mouse: true,
+          },
+        };
+
+        const chart = createChart(chartContainerRef.current, chartOptions);
+
+        const candlestickSeries = chart.addCandlestickSeries({
+          upColor: '#10B981', // green-500
+          downColor: '#EF4444', // red-500
+          borderDownColor: '#EF4444',
+          borderUpColor: '#10B981',
+          wickDownColor: '#EF4444',
+          wickUpColor: '#10B981',
+        });
+
+        chartRef.current = chart;
+        seriesRef.current = candlestickSeries;
+        setIsInitialized(true);
+
+        // Set initial visible range if provided
+        if (initialVisibleRange) {
+          chart.timeScale().setVisibleRange(initialVisibleRange);
+        }
+
+        // Auto resize handling
+        if (autosize) {
+          const handleResize = () => {
+            if (chartContainerRef.current && chartRef.current) {
+              chartRef.current.applyOptions({
+                width: chartContainerRef.current.clientWidth,
+              });
+            }
+          };
+
+          window.addEventListener('resize', handleResize);
+          
+          // Cleanup function
+          return () => {
+            window.removeEventListener('resize', handleResize);
+            if (chart) {
+              chart.remove();
+            }
+          };
+        }
+      } catch (error) {
+        console.error('❌ BaseChart: Error during chart initialization:', error);
+      }
     };
 
-    const chart = createChart(chartContainerRef.current, chartOptions);
-    const candlestickSeries = chart.addCandlestickSeries({
-      upColor: '#10B981', // green-500
-      downColor: '#EF4444', // red-500
-      borderDownColor: '#EF4444',
-      borderUpColor: '#10B981',
-      wickDownColor: '#EF4444',
-      wickUpColor: '#10B981',
-    });
+    // Запускаем инициализацию с небольшой задержкой
+    setTimeout(initializeChart, 0);
 
-    chartRef.current = chart;
-    seriesRef.current = candlestickSeries;
-    setIsInitialized(true);
-
-    // Set initial visible range if provided
-    if (initialVisibleRange) {
-      chart.timeScale().setVisibleRange(initialVisibleRange);
-    }
-
-    // Auto resize handling
-    if (autosize) {
-      const handleResize = () => {
-        if (chartContainerRef.current && chartRef.current) {
-          chartRef.current.applyOptions({
-            width: chartContainerRef.current.clientWidth,
-          });
-        }
-      };
-
-      window.addEventListener('resize', handleResize);
-      return () => {
-        window.removeEventListener('resize', handleResize);
-        chart.remove();
-      };
-    }
-
+    // Cleanup function
     return () => {
-      chart.remove();
+      if (chartRef.current) {
+        chartRef.current.remove();
+        chartRef.current = null;
+        seriesRef.current = null;
+        setIsInitialized(false);
+      }
     };
   }, [width, height, autosize, enableZoomPersistence, initialVisibleRange]);
 
@@ -261,17 +289,25 @@ export const BaseChart: React.FC<BaseChartProps> = ({
     onTimeframeChange(timeframe);
   }, [enablePlugins, pluginsReady, timeframe, onTimeframeChange]);
 
-  // Data updates
+  // Data updates - исправляем сортировку и убираем лишние зависимости
   useEffect(() => {
-    if (!seriesRef.current || !data || data.length === 0) return;
+    if (!seriesRef.current || !data || data.length === 0) {
+      return;
+    }
 
     try {
-      // Sort data by time to ensure correct order
+      // Правильная сортировка данных по времени (по возрастанию)
       const sortedData = [...data].sort((a, b) => a.time - b.time);
-      seriesRef.current.setData(sortedData as CandlestickData[]);
+      
+      // Удаляем дубликаты по времени
+      const uniqueData = sortedData.filter((item, index, arr) => {
+        return index === 0 || item.time !== arr[index - 1].time;
+      });
+      
+      seriesRef.current.setData(uniqueData as CandlestickData[]);
       
       if (onDataUpdate) {
-        onDataUpdate(sortedData);
+        onDataUpdate(uniqueData);
       }
 
       // Auto-fit content on first load if no initial range specified
@@ -284,9 +320,9 @@ export const BaseChart: React.FC<BaseChartProps> = ({
         }, 100);
       }
     } catch (error) {
-      console.error('Error updating chart data:', error);
+      console.error('❌ BaseChart: Error updating chart data:', error);
     }
-  }, [data, onDataUpdate, initialVisibleRange]);
+  }, [data, initialVisibleRange]); // Убираем onDataUpdate из зависимостей
 
   // Chart utility methods
   const resetZoom = useCallback(() => {
