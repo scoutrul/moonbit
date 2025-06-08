@@ -8,6 +8,7 @@ import ForecastService from '../services/ForecastService';
 import { subscribeToPriceUpdates } from '../utils/mockDataGenerator';
 import ChartMemoryManager from './organisms/charts/ChartMemoryManager';
 import webSocketService from '../services/WebSocketService';
+import BitcoinChartService from '../services/BitcoinChartService';
 
 /**
  * Компонент для отображения графика биткоина с фазами Луны
@@ -43,6 +44,8 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
   const [chartReady, setChartReady] = useState(false); // 🆕 NEW: Состояние готовности графика
   const unsubscribeRef = useRef(null);
   const [isChartFocused, setIsChartFocused] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false); // ➕ INFINITE SCROLL: состояние загрузки дополнительных данных
+  const isLoadingRef = useRef(false); // ➕ INFINITE SCROLL: ref для предотвращения множественных запросов
   const previousTimeframeRef = useRef(null);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     // 🔧 ИСПРАВЛЕНИЕ: Правильная инициализация темы с проверкой всех источников
@@ -83,6 +86,13 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
   });
   const [priceAnimation, setPriceAnimation] = useState(null); // 'up', 'down', null
   const lastPriceRef = useRef(null);
+
+  // ➕ INFINITE SCROLL: Константы для infinite scroll
+  const CHART_CONSTANTS = {
+    SCROLL_THRESHOLD: 20, // количество свечей до края для начала загрузки
+    LOADING_DEBOUNCE_MS: 2000, // задержка между запросами в миллисекундах
+    INFINITE_SCROLL_LIMIT: 50 // количество свечей для загрузки за раз
+  };
 
   // Таймфреймы для кнопок
   const timeframes = [
@@ -298,12 +308,20 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
     chartContainerRef.current.addEventListener('focus', handleChartFocus, true);
     chartContainerRef.current.addEventListener('click', handleChartFocus);
 
+
+    
+    // Подписываемся на изменения видимого диапазона
+    const timeScale = chart.timeScale();
+    timeScale.subscribeVisibleTimeRangeChange(handleVisibleTimeRangeChangeGlobal);
+
     return () => {
       window.removeEventListener('resize', handleResize);
       if (chartContainerRef.current) {
         chartContainerRef.current.removeEventListener('focus', handleChartFocus, true);
         chartContainerRef.current.removeEventListener('click', handleChartFocus);
       }
+      // Отписываемся от изменений видимого диапазона
+      timeScale.unsubscribeVisibleTimeRangeChange(handleVisibleTimeRangeChangeGlobal);
     };
   }, [chartData, forecastData, lunarEvents, isDarkMode, timeframe, showForecast]);
 
@@ -462,6 +480,125 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
     
     return requestPromise;
   }, []);
+
+  // ============ INFINITE SCROLL МЕТОДЫ ============
+  
+  // Рассчитывает количество свечей для заполнения видимого диапазона
+  const calculateRequiredCandles = useCallback((visibleRange, direction) => {
+    if (!visibleRange || chartData.length === 0) return CHART_CONSTANTS.INFINITE_SCROLL_LIMIT;
+    
+    // Рассчитываем среднее время между свечами
+    const timeInterval = chartData.length > 1 ? 
+      (chartData[chartData.length - 1].time - chartData[0].time) / (chartData.length - 1) : 
+      (timeframe === '1d' ? 86400 : timeframe === '1h' ? 3600 : 86400);
+    
+    // Видимый временной диапазон
+    const visibleDuration = visibleRange.to - visibleRange.from;
+    
+    // Количество свечей в видимом диапазоне
+    const visibleCandles = Math.ceil(visibleDuration / timeInterval);
+    
+    // Загружаем в 2-3 раза больше чем видимый диапазон для буфера
+    const requiredCandles = Math.max(
+      CHART_CONSTANTS.INFINITE_SCROLL_LIMIT, // Минимум 50
+      Math.min(
+        visibleCandles * 2, // В 2 раза больше видимых
+        500 // Максимум 500 за раз
+      )
+    );
+    
+    console.log(`🔢 Расчет свечей: видимых=${visibleCandles}, запрашиваем=${requiredCandles}, интервал=${timeInterval}s`);
+    return requiredCandles;
+  }, [chartData, timeframe]);
+
+  // Обработчик подгрузки данных для infinite scroll
+  const handleLoadMore = useCallback(async (direction, endTime, requiredCandles) => {
+    if (loadingMore) return;
+    
+    try {
+      setLoadingMore(true);
+      const candlesToLoad = requiredCandles || CHART_CONSTANTS.INFINITE_SCROLL_LIMIT;
+      console.log(`📊 Подгружаем ${direction === 'left' ? 'исторические' : 'новые'} данные (${candlesToLoad} свечей)`);
+      
+      if (direction === 'left' && endTime) {
+        // Подгружаем исторические данные
+        const result = await BitcoinChartService.getHistoricalData(timeframe, candlesToLoad, endTime);
+        
+        if (result.data.length > 0) {
+          setChartData(prevData => {
+            // Фильтруем дубликаты по времени
+            const existingTimes = new Set(prevData.map(item => item.time));
+            const newData = result.data.filter(item => !existingTimes.has(item.time));
+            
+            console.log(`📈 Получено ${result.data.length} свечей, уникальных: ${newData.length}`);
+            
+            if (newData.length === 0) {
+              console.log('⚠️ Все полученные свечи являются дубликатами');
+              return prevData;
+            }
+            
+            const combined = [...newData, ...prevData].sort((a, b) => a.time - b.time);
+            console.log(`✅ Итого свечей: ${combined.length}`);
+            return combined;
+          });
+        }
+      }
+    } catch (error) {
+      console.error('❌ Ошибка при подгрузке данных:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [timeframe, loadingMore]);
+
+  // Обработчик изменения видимого диапазона для infinite scroll (глобальная функция)
+  const handleVisibleTimeRangeChangeGlobal = useCallback((timeRange) => {
+    if (!timeRange || isLoadingRef.current || loadingMore || chartData.length === 0) return;
+
+    const dataLength = chartData.length;
+    const threshold = CHART_CONSTANTS.SCROLL_THRESHOLD;
+    
+    // Получаем временные границы данных
+    const oldestDataTime = chartData[0]?.time;
+    const newestDataTime = chartData[chartData.length - 1]?.time;
+    
+    // Временной интервал одной свечи
+    const timeInterval = dataLength > 1 ? 
+      (newestDataTime - oldestDataTime) / (dataLength - 1) : 
+      (timeframe === '1d' ? 86400 : timeframe === '1h' ? 3600 : 86400);
+    
+    // Проверяем левый край (исторические данные)
+    if (timeRange.from <= oldestDataTime + (threshold * timeInterval)) {
+      if (oldestDataTime) {
+        console.log('🔄 Подгружаем исторические данные (левый край)');
+        isLoadingRef.current = true;
+        
+        // Рассчитываем требуемое количество свечей
+        const requiredCandles = calculateRequiredCandles(timeRange, 'left');
+        handleLoadMore('left', oldestDataTime, requiredCandles);
+        
+        setTimeout(() => {
+          isLoadingRef.current = false;
+        }, CHART_CONSTANTS.LOADING_DEBOUNCE_MS);
+      }
+    }
+    
+    // Проверяем правый край (более новые данные)
+    if (timeRange.to >= newestDataTime - (threshold * timeInterval)) {
+      if (newestDataTime) {
+        console.log('🔄 Подгружаем новые данные (правый край)');
+        isLoadingRef.current = true;
+        
+        const requiredCandles = calculateRequiredCandles(timeRange, 'right');
+        handleLoadMore('right', newestDataTime, requiredCandles);
+        
+        setTimeout(() => {
+          isLoadingRef.current = false;
+        }, CHART_CONSTANTS.LOADING_DEBOUNCE_MS);
+      }
+    }
+  }, [chartData, loadingMore, calculateRequiredCandles, timeframe, handleLoadMore]);
+
+  // ============ КОНЕЦ INFINITE SCROLL МЕТОДОВ ============
   
   // Эффект для пересоздания графика при изменении таймфрейма
   useEffect(() => {
@@ -852,15 +989,42 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
     return () => {
       isMounted = false;
       if (chartRef.current) {
-        chartRef.current.remove();
-        chartRef.current = null;
-        candlestickSeriesRef.current = null;
-        forecastSeriesRef.current = null;
+        try {
+          // 🔧 ДВОЙНАЯ ЗАЩИТА: Проверяем что график еще не disposed перед удалением
+          const chart = chartRef.current;
+          if (chart && typeof chart.remove === 'function') {
+            // Дополнительная проверка через try-catch на случай если объект уже disposed
+            try {
+              console.log('🧹 Безопасное удаление графика при cleanup');
+              chart.remove();
+              console.log('✅ График успешно удален');
+            } catch (removeError) {
+              if (removeError.message.includes('disposed')) {
+                console.log('✅ График уже disposed автоматически, это нормально');
+              } else {
+                console.warn('⚠️ Ошибка при удалении графика:', removeError.message);
+              }
+            }
+          } else {
+            console.log('⚠️ График уже disposed или метод remove недоступен, пропускаем удаление');
+          }
+        } catch (error) {
+          console.warn('⚠️ Общая ошибка при cleanup графика:', error.message);
+        } finally {
+          chartRef.current = null;
+          candlestickSeriesRef.current = null;
+          forecastSeriesRef.current = null;
+        }
       }
       
       if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
+        try {
+          unsubscribeRef.current();
+        } catch (error) {
+          console.warn('⚠️ Ошибка при отписке от событий:', error.message);
+        } finally {
+          unsubscribeRef.current = null;
+        }
       }
     };
   }, [timeframe]); // 🔧 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Убираем isDarkMode чтобы смена темы НЕ пересоздавала график!
@@ -908,7 +1072,11 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
         if (chartMemoryManager.hasChart(currentChartId)) {
           if (!chartMemoryManager.isChartDisposed(currentChartId)) {
             console.log(`🧹 Chart ${currentChartId} exists and not disposed, removing from memory manager`);
-            chartMemoryManager.removeChart(currentChartId);
+            try {
+              chartMemoryManager.removeChart(currentChartId);
+            } catch (error) {
+              console.warn(`⚠️ Ошибка при удалении через memory manager: ${error.message}`);
+            }
           } else {
             console.log(`✅ Chart ${currentChartId} already disposed, skipping removal`);
           }
@@ -955,15 +1123,15 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
           },
         },
         handleScroll: {
-          vertTouchDrag: false,
-          horzTouchDrag: false,
-          mouseWheel: false,
+          vertTouchDrag: true,
+          horzTouchDrag: true,
+          mouseWheel: true,
           pressedMouseMove: true,
         },
         handleScale: {
           axisPressedMouseMove: true,
-          mouseWheel: false,
-          pinch: false,
+          mouseWheel: true,
+          pinch: true,
         },
       });
 
@@ -1104,6 +1272,11 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
       // Устанавливаем данные графика
       candlestickSeries.setData(chartData);
       console.log('✅ Данные установлены в новый график:', chartData.length, 'свечей');
+      
+      // ➕ INFINITE SCROLL: Подписываемся на изменения видимого диапазона для масштабирования и скроллинга
+      const timeScale = chart.timeScale();
+      timeScale.subscribeVisibleTimeRangeChange(handleVisibleTimeRangeChangeGlobal);
+      console.log('🔄 Подписка на изменение видимого диапазона активирована');
       
       // 🔧 ИСПРАВЛЕНИЕ: После успешного создания графика убираем loading
       setLoading(false);
@@ -1604,28 +1777,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
     chartId.current = `chart-${timeframe}-${Date.now()}`;
   }, []);
 
-  // Cleanup on component unmount
-  useEffect(() => {
-    return () => {
-      // Ensure chart is removed when component unmounts
-      const currentChartId = chartId.current;
-      if (currentChartId) {
-        console.log(`🏠 Component unmounting - cleaning up chart: ${currentChartId}`);
-        
-        // 🆕 CRITICAL FIX: Check if chart still exists and is not already disposed
-        if (chartMemoryManager.hasChart(currentChartId)) {
-          if (!chartMemoryManager.isChartDisposed(currentChartId)) {
-            console.log(`🧹 Chart ${currentChartId} exists and not disposed, removing from memory manager`);
-            chartMemoryManager.removeChart(currentChartId);
-          } else {
-            console.log(`✅ Chart ${currentChartId} already disposed, skipping cleanup`);
-          }
-        } else {
-          console.log(`⚠️ Chart ${currentChartId} not found in memory manager, might be already cleaned up`);
-        }
-      }
-    };
-  }, []); // Empty dependency array for unmount only
+  // 🔧 УДАЛЯЕМ ДУБЛИРОВАННЫЙ CLEANUP - логика уже есть в основном useEffect
 
   // Update legend when current price changes
   useEffect(() => {
@@ -1637,6 +1789,8 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
       }
     }
   }, [currentPrice]);
+
+  // ============ КОНЕЦ INFINITE SCROLL МЕТОДОВ ============
 
   if (loading && chartData.length === 0) {
     return (
@@ -1719,7 +1873,15 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
           isTransitioning ? 'opacity-50' : 'opacity-100'
         }`}
         tabIndex={0}
-      />
+      >
+        {/* ➕ INFINITE SCROLL: Индикатор загрузки */}
+        {loadingMore && (
+          <div className="absolute top-2 left-2 z-10 bg-black/70 text-white px-2 py-1 rounded-md text-xs flex items-center gap-2">
+            <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+            Загружаем данные...
+          </div>
+        )}
+      </div>
 
       <div className="flex justify-end items-center mb-1 gap-2 content-center">
           {timeframes.map((option) => {
