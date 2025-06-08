@@ -7,6 +7,20 @@
 
 ## ✅ Недавно завершено
 
+### **Bitcoin Chart "Object is disposed" Bug Fix** - ARCHIVED (2025-01-27)
+**Проблема**: Критическая ошибка "Object is disposed" при масштабировании и переключении таймфреймов  
+**Root Cause**: Дублированные cleanup функции в React useEffect пытались удалить уже disposed график  
+**Решение**: Защитные проверки try-catch + consolidated cleanup patterns реализованы  
+**Результат**: ✅ Стабильное масштабирование и infinite scroll без disposal errors  
+**Archive**: [chart-disposal-error-fix-20250127.md](docs/archive/bug-fixes/chart-disposal-error-fix-20250127.md)
+
+**Ключевые достижения**:
+- ✅ Critical UX bug исправлен через defensive programming patterns
+- ✅ Zoom functionality полностью включена (mouseWheel, pinch, scroll)
+- ✅ Infinite scroll работает стабильно при прокрутке и масштабировании  
+- ✅ Lifecycle management улучшен для React + Lightweight Charts integration
+- ✅ Comprehensive testing + reflection документированы
+
 ### **Lunar Events Timeframe Bug Fix** - ARCHIVED (2025-06-06)
 **Проблема**: При смене таймфрейма лунные события пропадали с графика и не восстанавливались  
 **Root Cause**: Race condition в React state management - агрессивная очистка lunarEvents перед загрузкой новых данных  
