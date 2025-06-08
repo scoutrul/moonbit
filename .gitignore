@@ -56,12 +56,18 @@ Thumbs.db
 /.next/
 /.vercel/
 
+# Серверный кэш и данные
+**/data/cache/
+**/server/data/cache/
+*.cache.json
+
 # Файлы дампов
 *.dump
 *.out
 
 # Playwright тесты и результаты
 /test-results/
+**/test-results/
 /playwright-report/
 tests/e2e/artifacts/
 **/screenshot.png
@@ -87,3 +93,13 @@ infinite-scroll-*.png
 simple-demo-*.png
 basechart-debug.*
 canvas-debug-*
+
+# Дополнительные правила для временных файлов
+**/test-results/
+**/data/cache/
+**/.last-run.json
+*.cache.json# Дополнительные правила для временных файлов
+**/test-results/
+**/data/cache/
+**/.last-run.json
+*.cache.json
