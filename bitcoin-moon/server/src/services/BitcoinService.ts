@@ -5,6 +5,12 @@ import { injectable, inject } from 'inversify';
 import { TYPES } from '../types/types';
 import { ILogger, IConfig, IBitcoinService, IBitcoinPriceResponse, IBitcoinHistoricalResponse } from '../types/interfaces';
 import crypto from 'crypto';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// ES module equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Сервис для работы с данными о биткоине
@@ -16,15 +22,29 @@ export class BitcoinService implements IBitcoinService {
   private priceData: IBitcoinPriceResponse;
   private historicalData: IBitcoinHistoricalResponse;
   private lastUpdated: Date;
-  private bybitApiKey: string = 'yeQUyZ3dZUpaapHoXG';
-  private bybitApiSecret: string = 'LJEIF5s68zTBENsW0XJaBUn0Ou1C1ZulNbZS';
-  private bybitApiUrl: string = 'https://api.bybit.com';
+  private bybitApiKey: string;
+  private bybitApiSecret: string;
+  private bybitApiUrl: string;
 
   constructor(
     @inject(TYPES.Logger) private logger: ILogger,
     @inject(TYPES.Config) private config: IConfig
   ) {
-    this.cacheFilePath = path.join(this.config.paths.cache, 'bitcoin_data.json');
+    this.cacheFilePath = path.join(__dirname, '../../data/cache/bitcoin.json');
+    this.lastUpdated = new Date(0);
+    this.bybitApiKey = process.env.BYBIT_API_KEY || '';
+    this.bybitApiSecret = process.env.BYBIT_API_SECRET || '';
+    // Убираем кавычки если они есть в переменной окружения
+    this.bybitApiUrl = (process.env.BYBIT_API_URL || 'https://api.bybit.com').replace(/['"]/g, '');
+    
+    this.logger.debug('BitcoinService: инициализация');
+    
+    // Создаем папку для кэша если её нет
+    const cacheDir = path.dirname(this.cacheFilePath);
+    if (!fs.existsSync(cacheDir)) {
+      fs.mkdirSync(cacheDir, { recursive: true });
+    }
+    
     this.priceData = {
       usd: {
         price: 0,
@@ -38,10 +58,11 @@ export class BitcoinService implements IBitcoinService {
         data: []
       }
     };
-    this.lastUpdated = new Date(0);
 
     // Загружаем данные из кэша при инициализации
     this.loadFromCache();
+    
+    this.logger.debug('BitcoinService: инициализация завершена');
   }
 
   /**

@@ -420,19 +420,56 @@ export const generateMockEvents = () => {
   const now = new Date();
   const events = [];
   
-  // Лунные фазы
+  // 🔧 УЛУЧШЕННАЯ генерация лунных фаз с реалистичными интервалами
   const moonPhases = [
-    { title: 'Новолуние', icon: '🌑' },
-    { title: 'Растущая луна', icon: '🌒' },
-    { title: 'Первая четверть', icon: '🌓' },
-    { title: 'Растущая луна', icon: '🌔' },
-    { title: 'Полнолуние', icon: '🌕' },
-    { title: 'Убывающая луна', icon: '🌖' },
-    { title: 'Последняя четверть', icon: '🌗' },
-    { title: 'Убывающая луна', icon: '🌘' }
+    { title: 'Новолуние', icon: '🌑', type: 'new_moon' },
+    { title: 'Полнолуние', icon: '🌕', type: 'full_moon' }
   ];
   
-  // Астрологические события
+  // Генерируем лунные фазы с реалистичным 29.5-дневным циклом
+  const lunarCycleLength = 29.5; // дней
+  const phasesPerCycle = 2; // новолуние и полнолуние
+  const daysBetweenMainPhases = lunarCycleLength / phasesPerCycle; // ~14.75 дней
+  
+  // Генерируем прошлые лунные фазы (за последние 120 дней)
+  for (let i = 0; i < 8; i++) {
+    const daysAgo = daysBetweenMainPhases * (i + 1);
+    const phaseIndex = i % 2; // Чередуем новолуние и полнолуние
+    const phase = moonPhases[phaseIndex];
+    
+    const date = new Date(now);
+    date.setDate(date.getDate() - daysAgo);
+    
+    events.push({
+      id: `moon-past-${i}`,
+      title: phase.title,
+      date: date.toISOString(),
+      type: 'moon',
+      icon: phase.icon,
+      description: `Влияние на рынок: ${Math.random() > 0.5 ? 'положительное' : 'отрицательное'}`
+    });
+  }
+  
+  // Генерируем будущие лунные фазы (на следующие 60 дней)
+  for (let i = 0; i < 4; i++) {
+    const daysForward = daysBetweenMainPhases * (i + 1);
+    const phaseIndex = i % 2; // Чередуем новолуние и полнолуние
+    const phase = moonPhases[phaseIndex];
+    
+    const date = new Date(now);
+    date.setDate(date.getDate() + daysForward);
+    
+    events.push({
+      id: `moon-future-${i}`,
+      title: phase.title,
+      date: date.toISOString(),
+      type: 'moon',
+      icon: phase.icon,
+      description: `Влияние на рынок: ${Math.random() > 0.5 ? 'положительное' : 'отрицательное'}`
+    });
+  }
+  
+  // Астрологические события (реже, с большими интервалами)
   const astroEvents = [
     { title: 'Солнце входит в знак Овна', icon: '♈' },
     { title: 'Меркурий ретроградный', icon: '☿' },
@@ -443,59 +480,13 @@ export const generateMockEvents = () => {
     { title: 'Лунное затмение', icon: '🌕' }
   ];
   
-  // Генерируем прошлые даты для лунных фаз
-  for (let i = 0; i < 8; i++) {
-    const randomPhase = moonPhases[Math.floor(Math.random() * moonPhases.length)];
-    const date = new Date(now);
-    date.setDate(date.getDate() - Math.floor(Math.random() * 90) - 1); // Случайно в пределах 90 дней назад
-    
-    events.push({
-      id: `moon-past-${i}`,
-      title: randomPhase.title,
-      date: date.toISOString(),
-      type: 'moon',
-      icon: randomPhase.icon,
-      description: `Влияние на рынок: ${Math.random() > 0.5 ? 'положительное' : 'отрицательное'}`
-    });
-  }
-  
-  // Генерируем прошлые даты для астрологических событий
-  for (let i = 0; i < 6; i++) {
-    const randomEvent = astroEvents[Math.floor(Math.random() * astroEvents.length)];
-    const date = new Date(now);
-    date.setDate(date.getDate() - Math.floor(Math.random() * 120) - 1); // Случайно в пределах 120 дней назад
-    
-    events.push({
-      id: `astro-past-${i}`,
-      title: randomEvent.title,
-      date: date.toISOString(),
-      type: 'astro',
-      icon: randomEvent.icon,
-      description: `Исторически ${Math.random() > 0.5 ? 'совпадало с ростом' : 'совпадало с падением'} рынка`
-    });
-  }
-  
-  // Генерируем будущие даты для лунных фаз
-  for (let i = 0; i < 6; i++) {
-    const randomPhase = moonPhases[Math.floor(Math.random() * moonPhases.length)];
-    const date = new Date(now);
-    date.setDate(date.getDate() + Math.floor(Math.random() * 60) + 1); // Случайно в ближайшие 60 дней
-    
-    events.push({
-      id: `moon-${i}`,
-      title: randomPhase.title,
-      date: date.toISOString(),
-      type: 'moon',
-      icon: randomPhase.icon,
-      description: `Влияние на рынок: ${Math.random() > 0.5 ? 'положительное' : 'отрицательное'}`
-    });
-  }
-  
-  // Генерируем будущие даты для астрологических событий
+  // Генерируем астрологические события с большими интервалами
   for (let i = 0; i < 4; i++) {
     const randomEvent = astroEvents[Math.floor(Math.random() * astroEvents.length)];
     const date = new Date(now);
-    date.setDate(date.getDate() + Math.floor(Math.random() * 90) + 1); // Случайно в ближайшие 90 дней
+    // Распределяем астрологические события более равномерно
+    const daysOffset = -90 + (i * 45); // От -90 до +90 дней с шагом 45
+    date.setDate(date.getDate() + daysOffset);
     
     events.push({
       id: `astro-${i}`,

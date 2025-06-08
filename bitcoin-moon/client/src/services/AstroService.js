@@ -13,20 +13,18 @@ class AstroService {
    */
   async getAstroEvents(startDate, endDate) {
     try {
-      console.log('AstroService: Запрашиваем астрономические события с', startDate, 'по', endDate);
-      // Форматируем даты в ISO строки
-      const startISO = startDate.toISOString();
-      const endISO = endDate.toISOString();
-      
-      // Запрашиваем данные о лунных событиях с сервера
+      console.log('AstroService: Запрашиваем астрономические события', { startDate, endDate });
       const response = await api.get('/astro/events', {
-        params: { startDate: startISO, endDate: endISO }
+        params: {
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString()
+        }
       });
       
-      // Проверяем, что получены реальные данные
-      if (!response.data || response.data.length === 0 || Object.keys(response.data).length === 0) {
-        console.warn('AstroService: Получены пустые данные от API, используем моковые данные');
-        // Генерируем моковые данные, если API вернул пустые данные
+      // 🔧 ИСПРАВЛЕНИЕ: Проверяем что response.data является массивом
+      if (!response.data || !Array.isArray(response.data) || response.data.length === 0) {
+        console.warn('AstroService: Получены некорректные данные от API (не массив или пустые), используем моковые данные');
+        // Генерируем моковые данные, если API вернул некорректные данные
         const mockEvents = generateMockEvents()
           .filter(event => {
             const eventDate = new Date(event.date);
@@ -37,7 +35,9 @@ class AstroService {
             type: event.type,
             title: event.title,
             icon: event.icon,
-            phaseName: event.title
+            phaseName: event.title,
+            date: event.date,  // 🆕 Добавляем date для совместимости с BitcoinChartWithLunarPhases
+            subtype: event.title === 'Новолуние' ? 'new_moon' : 'full_moon' // 🆕 Добавляем subtype
           }));
         
         console.log('AstroService: Сгенерировано моковых данных:', mockEvents.length);
@@ -51,7 +51,9 @@ class AstroService {
         type: event.type,
         title: event.title,
         icon: event.icon,
-        phaseName: event.phaseName
+        phaseName: event.phaseName || event.title,
+        date: event.date,  // 🆕 Добавляем date для совместимости с BitcoinChartWithLunarPhases
+        subtype: event.title === 'Новолуние' ? 'new_moon' : 'full_moon' // 🆕 Добавляем subtype
       }));
       
       // Сортируем данные по времени
@@ -71,7 +73,9 @@ class AstroService {
           type: event.type,
           title: event.title,
           icon: event.icon,
-          phaseName: event.title
+          phaseName: event.title,
+          date: event.date,  // 🆕 Добавляем date для совместимости
+          subtype: event.title === 'Новолуние' ? 'new_moon' : 'full_moon' // 🆕 Добавляем subtype
         }));
       
       console.log('AstroService: Сгенерировано моковых данных:', mockEvents.length);
