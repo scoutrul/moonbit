@@ -22,13 +22,6 @@ const Header = ({ darkMode, toggleDarkMode }) => {
             О проекте
           </a>
           
-          <a 
-            href="/real-data" 
-            className="mr-4 text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400"
-          >
-            Bitcoin Demo
-          </a>
-          
           <button
             onClick={toggleDarkMode}
             className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
