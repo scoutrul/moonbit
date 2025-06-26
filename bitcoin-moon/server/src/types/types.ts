@@ -7,6 +7,7 @@ export const TYPES = {
   BitcoinService: Symbol.for('BitcoinService'),
   MoonService: Symbol.for('MoonService'),
   AstroService: Symbol.for('AstroService'),
+  SolarService: Symbol.for('SolarService'),
   EventsService: Symbol.for('EventsService'),
   DataSyncService: Symbol.for('DataSyncService'),
 

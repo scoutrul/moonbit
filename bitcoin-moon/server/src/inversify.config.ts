@@ -19,6 +19,7 @@ import { Config } from './config';
 import { BitcoinService } from './services/BitcoinService';
 import { MoonService } from './services/MoonService';
 import { AstroService } from './services/AstroService';
+import { SolarService } from './services/SolarService';
 import { EventsService } from './services/EventsService';
 import { DataSyncService } from './services/DataSyncService';
 import { BitcoinRepository } from './repositories/BitcoinRepository';
@@ -42,6 +43,7 @@ container.bind<IMoonRepository>(TYPES.MoonRepository).to(MoonRepository).inSingl
 container.bind<IBitcoinService>(TYPES.BitcoinService).to(BitcoinService).inSingletonScope();
 container.bind<IMoonService>(TYPES.MoonService).to(MoonService).inSingletonScope();
 container.bind(TYPES.AstroService).to(AstroService).inSingletonScope();
+container.bind(TYPES.SolarService).to(SolarService).inSingletonScope();
 container.bind(TYPES.EventsService).to(EventsService).inSingletonScope();
 container.bind<IDataSyncService>(TYPES.DataSyncService).to(DataSyncService).inSingletonScope();
 
