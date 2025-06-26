@@ -412,8 +412,265 @@ setInterval(() => {
 
 // Добавляем новую функцию для генерации моковых событий
 
+// Солнечные события - математические расчеты (упрощенная версия серверной логики)
 /**
- * Генерирует моковые данные о событиях (лунных и астрологических)
+ * Вычисляет приблизительный Julian Day для сезонного события
+ * @param {number} year - Год 
+ * @param {string} season - Сезон (spring, summer, autumn, winter)
+ * @returns {number} Julian Day
+ */
+const getSeasonApprox = (year, season) => {
+  const Y = (year - 2000) / 1000;
+  
+  let JDE0;
+  switch (season) {
+    case 'spring': // March equinox
+      JDE0 = 2451623.80984 + 365242.37404 * Y + 0.05169 * Y * Y - 0.00411 * Y * Y * Y - 0.00057 * Y * Y * Y * Y;
+      break;
+    case 'summer': // June solstice
+      JDE0 = 2451716.56767 + 365241.62603 * Y + 0.00325 * Y * Y + 0.00888 * Y * Y * Y - 0.00030 * Y * Y * Y * Y;
+      break;
+    case 'autumn': // September equinox
+      JDE0 = 2451810.21715 + 365242.01767 * Y - 0.11575 * Y * Y + 0.00337 * Y * Y * Y + 0.00078 * Y * Y * Y * Y;
+      break;
+    case 'winter': // December solstice
+      JDE0 = 2451900.05952 + 365242.74049 * Y - 0.06223 * Y * Y - 0.00823 * Y * Y * Y + 0.00032 * Y * Y * Y * Y;
+      break;
+  }
+  
+  return JDE0;
+};
+
+/**
+ * Конвертирует Julian Day в JavaScript Date
+ * @param {number} jd - Julian Day
+ * @returns {Date} JavaScript Date
+ */
+const julianToDate = (jd) => {
+  const a = jd + 0.5;
+  const z = Math.floor(a);
+  const f = a - z;
+  
+  let A = z;
+  if (z >= 2299161) {
+    const alpha = Math.floor((z - 1867216.25) / 36524.25);
+    A = z + 1 + alpha - Math.floor(alpha / 4);
+  }
+  
+  const B = A + 1524;
+  const C = Math.floor((B - 122.1) / 365.25);
+  const D = Math.floor(365.25 * C);
+  const E = Math.floor((B - D) / 30.6001);
+  
+  const day = B - D - Math.floor(30.6001 * E) + f;
+  const month = E < 14 ? E - 1 : E - 13;
+  const year = month > 2 ? C - 4716 : C - 4715;
+  
+  const hours = (day - Math.floor(day)) * 24;
+  const minutes = (hours - Math.floor(hours)) * 60;
+  const seconds = (minutes - Math.floor(minutes)) * 60;
+  
+  return new Date(year, month - 1, Math.floor(day), Math.floor(hours), Math.floor(minutes), Math.floor(seconds));
+};
+
+/**
+ * Генерирует солнечные события для заданного года
+ * @param {number} year - Год
+ * @returns {Array} Массив солнечных событий
+ */
+const generateSolarEventsForYear = (year) => {
+  const events = [];
+  
+  const seasons = [
+    { key: 'spring', title: 'Весеннее равноденствие', icon: '🌸', type: 'spring_equinox' },
+    { key: 'summer', title: 'Летнее солнцестояние', icon: '☀️', type: 'summer_solstice' },
+    { key: 'autumn', title: 'Осеннее равноденствие', icon: '🍂', type: 'autumn_equinox' },
+    { key: 'winter', title: 'Зимнее солнцестояние', icon: '❄️', type: 'winter_solstice' }
+  ];
+  
+  for (const { key, title, icon, type } of seasons) {
+    const jd = getSeasonApprox(year, key);
+    const date = julianToDate(jd);
+    
+    events.push({
+      id: `solar-${year}-${key}`,
+      title,
+      date: date.toISOString(),
+      type: 'solar',
+      subtype: type,
+      icon,
+      description: `${title} ${year} года. Астрономически значимое событие.`,
+      category: 'seasonal'
+    });
+  }
+  
+  return events;
+};
+
+/**
+ * Генерирует солнечные события для диапазона дат
+ * @param {Date} startDate - Начальная дата
+ * @param {Date} endDate - Конечная дата
+ * @param {Array} types - Типы событий ['seasonal', 'solar_eclipse', 'lunar_eclipse']
+ * @returns {Array} Массив солнечных событий
+ */
+export const generateMockSolarEvents = (startDate, endDate, types = ['seasonal', 'solar_eclipse', 'lunar_eclipse']) => {
+  const events = [];
+  
+  // Определяем диапазон лет
+  const startYear = startDate.getFullYear();
+  const endYear = endDate.getFullYear();
+  
+  // Добавляем сезонные события если запрошены
+  if (types.includes('seasonal')) {
+    for (let year = startYear; year <= endYear; year++) {
+      const seasonalEvents = generateSolarEventsForYear(year);
+      events.push(...seasonalEvents.filter(event => {
+        const eventDate = new Date(event.date);
+        return eventDate >= startDate && eventDate <= endDate;
+      }));
+    }
+  }
+  
+  // Добавляем затмения если запрошены
+  if (types.includes('solar_eclipse') || types.includes('lunar_eclipse')) {
+    const eclipses = generateEclipseEvents();
+    events.push(...eclipses.filter(event => {
+      const eventDate = new Date(event.date);
+      const isInRange = eventDate >= startDate && eventDate <= endDate;
+      const isRequestedType = types.includes(event.subtype);
+      return isInRange && isRequestedType;
+    }));
+  }
+  
+  // Сортируем по дате
+  events.sort((a, b) => new Date(a.date) - new Date(b.date));
+  
+  return events;
+};
+
+/**
+ * Генерирует сезонные события для года
+ * @param {number} year - Год
+ * @returns {Array} Массив сезонных событий
+ */
+export const generateMockSeasonalEvents = (year) => {
+  return generateSolarEventsForYear(year);
+};
+
+/**
+ * Генерирует солнечные затмения
+ * @param {number} year - Год (используется для фильтрации)
+ * @returns {Array} Массив солнечных затмений
+ */
+export const generateMockSolarEclipses = (year) => {
+  const eclipses = generateEclipseEvents();
+  return eclipses.filter(eclipse => {
+    const eclipseYear = new Date(eclipse.date).getFullYear();
+    return eclipseYear === year && eclipse.subtype === 'solar_eclipse';
+  });
+};
+
+/**
+ * Генерирует лунные затмения
+ * @param {number} year - Год (используется для фильтрации)
+ * @returns {Array} Массив лунных затмений
+ */
+export const generateMockLunarEclipses = (year) => {
+  const eclipses = generateEclipseEvents();
+  return eclipses.filter(eclipse => {
+    const eclipseYear = new Date(eclipse.date).getFullYear();
+    return eclipseYear === year && eclipse.subtype === 'lunar_eclipse';
+  });
+};
+
+/**
+ * Генерирует известные затмения для 2024-2025
+ * @returns {Array} Массив затмений
+ */
+const generateEclipseEvents = () => {
+  const eclipses = [
+    // 2024 затмения
+    {
+      id: 'eclipse-2024-1',
+      title: 'Полное солнечное затмение',
+      date: new Date('2024-04-08T18:18:00Z').toISOString(),
+      type: 'solar',
+      subtype: 'solar_eclipse',
+      icon: '🌑',
+      description: 'Полное солнечное затмение, видимое в Северной Америке',
+      magnitude: 1.05,
+      duration: 268,
+      visibility: 'Северная Америка'
+    },
+    {
+      id: 'eclipse-2024-2',
+      title: 'Частичное лунное затмение',
+      date: new Date('2024-09-18T02:44:00Z').toISOString(),
+      type: 'solar',
+      subtype: 'lunar_eclipse',
+      icon: '🌗',
+      description: 'Частичное лунное затмение',
+      magnitude: 0.08,
+      duration: 64,
+      visibility: 'Америка, Европа, Африка'
+    },
+    // 2025 затмения  
+    {
+      id: 'eclipse-2025-1',
+      title: 'Полное лунное затмение',
+      date: new Date('2025-03-14T06:59:00Z').toISOString(),
+      type: 'solar',
+      subtype: 'lunar_eclipse',
+      icon: '🌕',
+      description: 'Полное лунное затмение, видимое в Тихоокеанском регионе',
+      magnitude: 1.18,
+      duration: 65,
+      visibility: 'Тихий океан, Америка, Западная Европа, Западная Африка'
+    },
+    {
+      id: 'eclipse-2025-2',
+      title: 'Частичное солнечное затмение',
+      date: new Date('2025-03-29T10:48:00Z').toISOString(),
+      type: 'solar', 
+      subtype: 'solar_eclipse',
+      icon: '🌘',
+      description: 'Частичное солнечное затмение в Атлантике',
+      magnitude: 0.94,
+      duration: 0,
+      visibility: 'Атлантический океан, Европа, Азия, Африка'
+    },
+    {
+      id: 'eclipse-2025-3',
+      title: 'Частичное лунное затмение',
+      date: new Date('2025-09-07T18:11:00Z').toISOString(),
+      type: 'solar',
+      subtype: 'lunar_eclipse', 
+      icon: '🌗',
+      description: 'Частичное лунное затмение',
+      magnitude: 0.06,
+      duration: 27,
+      visibility: 'Европа, Африка, Азия, Австралия'
+    },
+    {
+      id: 'eclipse-2025-4',
+      title: 'Частичное солнечное затмение',
+      date: new Date('2025-09-21T19:43:00Z').toISOString(),
+      type: 'solar',
+      subtype: 'solar_eclipse',
+      icon: '🌘',
+      description: 'Частичное солнечное затмение в Тихом океане',
+      magnitude: 0.86,
+      duration: 0,
+      visibility: 'Новая Зеландия, Антарктика'
+    }
+  ];
+  
+  return eclipses;
+};
+
+/**
+ * Генерирует моковые данные о событиях (лунных, астрологических и солнечных)
  * @returns {Array} Массив моковых событий
  */
 export const generateMockEvents = () => {
@@ -438,10 +695,17 @@ export const generateMockEvents = () => {
     { title: 'Меркурий ретроградный', icon: '☿' },
     { title: 'Венера в соединении с Юпитером', icon: '♀♃' },
     { title: 'Марс в квадрате с Сатурном', icon: '♂□♄' },
-    { title: 'Юпитер входит в знак Рыб', icon: '♃♓' },
-    { title: 'Солнечное затмение', icon: '☀️' },
-    { title: 'Лунное затмение', icon: '🌕' }
+    { title: 'Юпитер входит в знак Рыб', icon: '♃♓' }
   ];
+  
+  // Добавляем солнечные события для текущего года и соседних лет
+  const currentYear = now.getFullYear();
+  for (let year = currentYear - 2; year <= currentYear + 2; year++) {
+    events.push(...generateSolarEventsForYear(year));
+  }
+  
+  // Добавляем затмения
+  events.push(...generateEclipseEvents());
   
   // Генерируем прошлые даты для лунных фаз
   for (let i = 0; i < 8; i++) {

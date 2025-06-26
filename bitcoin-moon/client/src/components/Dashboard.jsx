@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import BitcoinChartWithLunarPhases from './BitcoinChartWithLunarPhases';
+import UniversalChart from './UniversalChart';
 import UpcomingEvents from './UpcomingEvents';
 import ErrorWrapper from './ErrorWrapper';
 import BitcoinService from '../services/BitcoinService';
@@ -52,7 +52,7 @@ const Dashboard = () => {
               onError={handleError}
             >
               {/* Убираем onPriceUpdate - больше не нужен */}
-              <BitcoinChartWithLunarPhases 
+              <UniversalChart 
                 timeframe={timeframe} 
               />
             </ErrorWrapper>

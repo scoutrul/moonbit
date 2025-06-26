@@ -1,12 +1,213 @@
 import api from './api';
-import { generateMockEvents } from '../utils/mockDataGenerator';
+import { 
+  generateMockEvents, 
+  generateMockSolarEvents, 
+  generateMockSeasonalEvents, 
+  generateMockSolarEclipses, 
+  generateMockLunarEclipses 
+} from '../utils/mockDataGenerator';
 
 /**
  * Сервис для работы с астрономическими событиями
  */
 class AstroService {
   /**
-   * Получает астрономические события для указанного периода
+   * Получает все солнечные события (солнцестояния, равноденствия, затмения)
+   * @param {Date} startDate - Начальная дата
+   * @param {Date} endDate - Конечная дата
+   * @param {Array<string>} types - Типы событий ['seasonal', 'solar_eclipse', 'lunar_eclipse']
+   * @returns {Promise<Object>} Промис с объектом, содержащим все типы солнечных событий
+   */
+  async getSolarEvents(startDate, endDate, types = ['seasonal', 'solar_eclipse', 'lunar_eclipse']) {
+    try {
+      console.log('AstroService: Запрашиваем солнечные события с', startDate, 'по', endDate, 'типы:', types);
+      
+      const response = await api.get('/astro/solar-events', {
+        params: { 
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          types: types.join(',')
+        }
+      });
+      
+      console.log('🔍 AstroService.getSolarEvents RAW response:', response.data);
+      
+      if (!response.data || !response.data.events) {
+        console.warn('AstroService: Получены пустые данные от API, используем моковые данные');
+        console.log('🔍 Response structure:', { hasData: !!response.data, hasEvents: !!response.data?.events });
+        return this._generateMockSolarEvents(startDate, endDate, types);
+      }
+      
+      // Преобразуем события в унифицированный формат
+      const result = {
+        seasonal: [],
+        solarEclipses: [],
+        lunarEclipses: []
+      };
+      
+      if (response.data.events.seasonal) {
+        result.seasonal = response.data.events.seasonal.map(event => ({
+          time: Math.floor(new Date(event.date).getTime() / 1000),
+          type: 'seasonal',
+          subtype: event.type, // Используем event.type как subtype
+          title: event.title,
+          description: event.description,
+          icon: this._getSeasonalIcon(event.type)
+        }));
+      }
+      
+      if (response.data.events.solarEclipses) {
+        result.solarEclipses = response.data.events.solarEclipses.map(event => ({
+          time: Math.floor(new Date(event.date).getTime() / 1000),
+          type: 'solar_eclipse',
+          eclipseType: event.type,
+          title: event.title,
+          description: event.description,
+          icon: '🌒', // Иконка для солнечного затмения
+          magnitude: event.magnitude,
+          visibility: event.visibility
+        }));
+      }
+      
+      if (response.data.events.lunarEclipses) {
+        result.lunarEclipses = response.data.events.lunarEclipses.map(event => ({
+          time: Math.floor(new Date(event.date).getTime() / 1000),
+          type: 'lunar_eclipse',
+          eclipseType: event.type,
+          title: event.title,
+          description: event.description,
+          icon: '🌕', // Иконка для лунного затмения
+          magnitude: event.magnitude,
+          visibility: event.visibility
+        }));
+      }
+      
+      console.log('AstroService: Получено солнечных событий:', {
+        seasonal: result.seasonal.length,
+        solarEclipses: result.solarEclipses.length,
+        lunarEclipses: result.lunarEclipses.length
+      });
+      
+      // ДИАГНОСТИКА: Проверим структуру данных API
+      console.log('🔍 RAW API response.data:', response.data);
+      console.log('🔍 Обработанный result:', result);
+      
+      return result;
+    } catch (error) {
+      console.error('Error fetching solar events:', error);
+      console.warn('AstroService: Ошибка API, используем моковые данные');
+      return this._generateMockSolarEvents(startDate, endDate, types);
+    }
+  }
+
+  /**
+   * Получает сезонные события (солнцестояния и равноденствия) для года
+   * @param {number} year - Год
+   * @returns {Promise<Array>} Промис с массивом сезонных событий
+   */
+  async getSeasonalEvents(year = new Date().getFullYear()) {
+    try {
+      console.log('AstroService: Запрашиваем сезонные события для года', year);
+      
+      const response = await api.get('/astro/seasonal', {
+        params: { year }
+      });
+      
+      if (!response.data || !response.data.events) {
+        console.warn('AstroService: Получены пустые данные от API, используем моковые данные');
+        return this._generateMockSeasonalEvents(year);
+      }
+      
+      return response.data.events.map(event => ({
+        time: event.time,
+        type: 'seasonal',
+        subtype: event.subtype,
+        title: event.title,
+        description: event.description,
+        icon: event.icon
+      }));
+      
+    } catch (error) {
+      console.error('Error fetching seasonal events:', error);
+      console.warn('AstroService: Ошибка API, используем моковые данные');
+      return this._generateMockSeasonalEvents(year);
+    }
+  }
+
+  /**
+   * Получает солнечные затмения для года
+   * @param {number} year - Год
+   * @returns {Promise<Array>} Промис с массивом солнечных затмений
+   */
+  async getSolarEclipses(year = new Date().getFullYear()) {
+    try {
+      console.log('AstroService: Запрашиваем солнечные затмения для года', year);
+      
+      const response = await api.get('/astro/solar-eclipses', {
+        params: { year }
+      });
+      
+      if (!response.data || !response.data.eclipses) {
+        console.warn('AstroService: Получены пустые данные от API, используем моковые данные');
+        return this._generateMockSolarEclipses(year);
+      }
+      
+      return response.data.eclipses.map(event => ({
+        time: event.time,
+        type: 'solar_eclipse',
+        eclipseType: event.eclipseType,
+        title: event.title,
+        description: event.description,
+        icon: event.icon,
+        magnitude: event.magnitude,
+        visibility: event.visibility
+      }));
+      
+    } catch (error) {
+      console.error('Error fetching solar eclipses:', error);
+      console.warn('AstroService: Ошибка API, используем моковые данные');
+      return this._generateMockSolarEclipses(year);
+    }
+  }
+
+  /**
+   * Получает лунные затмения для года
+   * @param {number} year - Год
+   * @returns {Promise<Array>} Промис с массивом лунных затмений
+   */
+  async getLunarEclipses(year = new Date().getFullYear()) {
+    try {
+      console.log('AstroService: Запрашиваем лунные затмения для года', year);
+      
+      const response = await api.get('/astro/lunar-eclipses', {
+        params: { year }
+      });
+      
+      if (!response.data || !response.data.eclipses) {
+        console.warn('AstroService: Получены пустые данные от API, используем моковые данные');
+        return this._generateMockLunarEclipses(year);
+      }
+      
+      return response.data.eclipses.map(event => ({
+        time: event.time,
+        type: 'lunar_eclipse',
+        eclipseType: event.eclipseType,
+        title: event.title,
+        description: event.description,
+        icon: event.icon,
+        magnitude: event.magnitude,
+        visibility: event.visibility
+      }));
+      
+    } catch (error) {
+      console.error('Error fetching lunar eclipses:', error);
+      console.warn('AstroService: Ошибка API, используем моковые данные');
+      return this._generateMockLunarEclipses(year);
+    }
+  }
+
+  /**
+   * Получает астрономические события для указанного периода (лунные фазы)
    * @param {Date} startDate - Начальная дата
    * @param {Date} endDate - Конечная дата
    * @returns {Promise<Array>} Промис с массивом событий
@@ -321,6 +522,136 @@ class AstroService {
         disclaimer: 'Данный анализ представлен исключительно в информационных целях и не является инвестиционной рекомендацией.'
       };
     }
+  }
+
+  // Приватные методы для генерации моковых данных
+
+  /**
+   * Получает иконку для сезонного события
+   * @param {string} seasonType - Тип сезонного события
+   * @returns {string} Иконка
+   */
+  _getSeasonalIcon(seasonType) {
+    const iconMap = {
+      'spring_equinox': '🌱',
+      'summer_solstice': '☀️',
+      'autumn_equinox': '🍂',
+      'winter_solstice': '❄️'
+    };
+    return iconMap[seasonType] || '🌞';
+  }
+
+  /**
+   * Генерирует моковые солнечные события
+   * @param {Date} startDate - Начальная дата
+   * @param {Date} endDate - Конечная дата
+   * @param {Array} types - Типы событий
+   * @returns {Object} Объект с солнечными событиями
+   */
+  _generateMockSolarEvents(startDate, endDate, types) {
+    console.log('🔄 Генерируем mock solar events для периода:', startDate.toISOString(), '-', endDate.toISOString());
+    
+    const mockEvents = generateMockSolarEvents(startDate, endDate, types);
+    
+    // Группируем события по типам
+    const result = {
+      seasonal: [],
+      solarEclipses: [],
+      lunarEclipses: []
+    };
+    
+    mockEvents.forEach(event => {
+      const unifiedEvent = {
+        time: Math.floor(new Date(event.date).getTime() / 1000),
+        type: event.type,
+        subtype: event.subtype,
+        title: event.title,
+        description: event.description,
+        icon: event.icon
+      };
+      
+      if (event.subtype === 'solar_eclipse') {
+        result.solarEclipses.push({
+          ...unifiedEvent,
+          magnitude: event.magnitude,
+          visibility: event.visibility
+        });
+      } else if (event.subtype === 'lunar_eclipse') {
+        result.lunarEclipses.push({
+          ...unifiedEvent,
+          magnitude: event.magnitude,
+          visibility: event.visibility
+        });
+      } else {
+        result.seasonal.push(unifiedEvent);
+      }
+    });
+    
+    console.log('🔄 Mock events результат:', {
+      seasonal: result.seasonal.length,
+      solarEclipses: result.solarEclipses.length,
+      lunarEclipses: result.lunarEclipses.length
+    });
+    
+    return result;
+  }
+
+  /**
+   * Генерирует моковые сезонные события
+   * @param {number} year - Год
+   * @returns {Array} Массив сезонных событий
+   */
+  _generateMockSeasonalEvents(year) {
+    const mockEvents = generateMockSeasonalEvents(year);
+    
+    return mockEvents.map(event => ({
+      time: Math.floor(new Date(event.date).getTime() / 1000),
+      type: event.type,
+      subtype: event.subtype,
+      title: event.title,
+      description: event.description,
+      icon: event.icon
+    }));
+  }
+
+  /**
+   * Генерирует моковые солнечные затмения
+   * @param {number} year - Год
+   * @returns {Array} Массив солнечных затмений
+   */
+  _generateMockSolarEclipses(year) {
+    const mockEvents = generateMockSolarEclipses(year);
+    
+    return mockEvents.map(event => ({
+      time: Math.floor(new Date(event.date).getTime() / 1000),
+      type: 'solar_eclipse',
+      eclipseType: event.subtype,
+      title: event.title,
+      description: event.description,
+      icon: event.icon,
+      magnitude: event.magnitude,
+      visibility: event.visibility
+    }));
+  }
+
+  /**
+   * Генерирует моковые лунные затмения
+   * @param {number} year - Год
+   * @returns {Array} Массив лунных затмений
+   */
+  _generateMockLunarEclipses(year) {
+    const mockEvents = generateMockLunarEclipses(year);
+    
+    return mockEvents.map(event => ({
+      time: Math.floor(new Date(event.date).getTime() / 1000),
+      type: 'lunar_eclipse',
+      eclipseType: event.subtype,
+      title: event.title,
+      description: event.description,
+      icon: event.icon,
+      magnitude: event.magnitude,
+      visibility: event.visibility
+    }));
   }
 }
 

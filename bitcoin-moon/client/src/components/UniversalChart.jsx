@@ -10,7 +10,7 @@ import ChartMemoryManager from './organisms/charts/ChartMemoryManager';
 import webSocketService from '../services/WebSocketService';
 
 /**
- * Компонент для отображения графика биткоина с фазами Луны
+ * Универсальный компонент для отображения графика с астрономическими событиями
  * @typedef {Object} CandlestickData
  * @property {number} time - временная метка
  * @property {number} open - цена открытия
@@ -22,8 +22,8 @@ import webSocketService from '../services/WebSocketService';
  * @param {string} props.timeframe - выбранный таймфрейм
  * @param {CandlestickData[]} [props.data] - данные для отображения на графике (опционально)
  */
-const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
-  console.log('🚀 BitcoinChartWithLunarPhases: Компонент инициализируется', { timeframe, dataLength: data?.length || 0 });
+const UniversalChart = ({ timeframe, data = [] }) => {
+  console.log('🚀 UniversalChart: Компонент инициализируется', { timeframe, dataLength: data?.length || 0 });
   
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
@@ -38,6 +38,13 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
   const [events, setEvents] = useState([]);
   const [lunarEvents, setLunarEvents] = useState([]);
   const [futureLunarEvents, setFutureLunarEvents] = useState([]);
+  // 🌞 Солнечные события
+  const [solarEvents, setSolarEvents] = useState([]);
+  const [showSolarEvents, setShowSolarEvents] = useState(true);
+  // 🌙 Лунные события controls
+  const [showLunarEvents, setShowLunarEvents] = useState(true);
+  // 📊 UI Controls
+  const [isEventsCollapsed, setIsEventsCollapsed] = useState(false);
   const [loadingTimeframe, setLoadingTimeframe] = useState(null); // Отслеживаем какой таймфрейм загружается
   const [isTransitioning, setIsTransitioning] = useState(false); // Состояние плавного перехода
   const [chartReady, setChartReady] = useState(false); // 🆕 NEW: Состояние готовности графика
@@ -708,6 +715,101 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
           }
         }
         
+        // 🌞 Загружаем солнечные события
+        if (chartData && chartData.length > 0) {
+          try {
+            const startDate = new Date(chartData[0].time * 1000);
+            const endDate = new Date(chartData[chartData.length - 1].time * 1000);
+            
+            console.log(`🌞 Запрашиваем солнечные события: ${startDate.toISOString()} - ${endDate.toISOString()}`);
+            
+            // Запрашиваем все типы солнечных событий
+            const solarData = await AstroService.getSolarEvents(startDate, endDate);
+            console.log('🌞 Raw solar events response:', solarData);
+            console.log('🔍 КОМПОНЕНТ: Детальная диагностика solarData:', {
+              type: typeof solarData,
+              isObject: typeof solarData === 'object',
+              hasSeasonalKey: !!solarData?.seasonal,
+              seasonalLength: solarData?.seasonal?.length || 0,
+              hasSolarEclipses: !!solarData?.solarEclipses,
+              solarEclipsesLength: solarData?.solarEclipses?.length || 0,
+              hasLunarEclipses: !!solarData?.lunarEclipses,
+              lunarEclipsesLength: solarData?.lunarEclipses?.length || 0,
+              keys: solarData ? Object.keys(solarData) : 'no data'
+            });
+            
+            if (!isMounted || requestController.isCancelled) return;
+            
+            // Объединяем все солнечные события в один массив с унифицированным форматом
+            const allSolarEvents = [];
+            
+            // Добавляем сезонные события
+            if (solarData.seasonal) {
+              allSolarEvents.push(...solarData.seasonal.map(event => ({
+                time: event.time,
+                type: 'solar',
+                subtype: event.subtype,
+                title: event.title,
+                description: event.description,
+                icon: event.icon,
+                category: 'seasonal'
+              })));
+            }
+            
+            // Добавляем солнечные затмения  
+            if (solarData.solarEclipses) {
+              allSolarEvents.push(...solarData.solarEclipses.map(event => ({
+                time: event.time,
+                type: 'solar',
+                subtype: 'solar_eclipse',
+                title: event.title,
+                description: event.description,
+                icon: event.icon,
+                magnitude: event.magnitude,
+                visibility: event.visibility,
+                category: 'eclipse'
+              })));
+            }
+            
+            // Добавляем лунные затмения
+            if (solarData.lunarEclipses) {
+              allSolarEvents.push(...solarData.lunarEclipses.map(event => ({
+                time: event.time,
+                type: 'solar',
+                subtype: 'lunar_eclipse',
+                title: event.title,
+                description: event.description,
+                icon: event.icon,
+                magnitude: event.magnitude,
+                visibility: event.visibility,
+                category: 'eclipse'
+              })));
+            }
+            
+            // Сортируем по времени
+            allSolarEvents.sort((a, b) => a.time - b.time);
+            
+            console.log('🎉 Получено солнечных событий:', allSolarEvents.length);
+            console.log('🌞 Солнечные события:', allSolarEvents);
+            
+            // Дополнительная диагностика
+            allSolarEvents.forEach((event, index) => {
+              console.log(`Event ${index}:`, {
+                time: event.time,
+                timeAsDate: new Date(event.time * 1000).toISOString(),
+                subtype: event.subtype,
+                title: event.title,
+                icon: event.icon
+              });
+            });
+            
+            setSolarEvents(allSolarEvents);
+          } catch (err) {
+            console.error('❌ Ошибка при загрузке солнечных событий:', err);
+            // Продолжаем выполнение, даже если не удалось загрузить солнечные события
+          }
+        }
+        
         if (!isMounted || requestController.isCancelled) return;
         
         // 🔧 ИСПРАВЛЕНИЕ: Убираем создание графика отсюда - он будет создан в отдельном useEffect
@@ -1095,11 +1197,72 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
         }
       };
       
-      // Подписываемся на событие движения перекрестия
-      chart.subscribeCrosshairMove(updateLegend);
+      // 🔧 НОВОЕ: Создаем элемент для тултипов маркеров
+      const tooltipElement = document.createElement('div');
+      tooltipElement.style.cssText = `
+        position: absolute;
+        background: ${isDarkMode ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)'};
+        color: ${isDarkMode ? '#f1f5f9' : '#1e293b'};
+        border: 1px solid ${isDarkMode ? '#475569' : '#e2e8f0'};
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 12px;
+        font-family: sans-serif;
+        line-height: 1.4;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        pointer-events: none;
+        z-index: 9999;
+        display: none;
+        max-width: 200px;
+        backdrop-filter: blur(4px);
+      `;
+      chartContainerRef.current.appendChild(tooltipElement);
+
+      // Переменная для хранения текущих маркеров
+      let currentMarkers = [];
+
+      // Обработчик движения перекрестия с поддержкой тултипов для маркеров
+      const handleCrosshairMove = param => {
+        // Обновляем легенду
+        updateLegend(param);
+        
+        // Обрабатываем тултипы маркеров
+        if (param.point && currentMarkers.length > 0) {
+          const time = param.time;
+          if (time) {
+            // Находим маркер рядом с текущим временем (в пределах разумного диапазона)
+            const tolerance = 86400; // 1 день в секундах
+            const nearbyMarker = currentMarkers.find(marker => 
+              Math.abs(marker.time - time) <= tolerance
+            );
+            
+            if (nearbyMarker && nearbyMarker.title) {
+              // Показываем тултип
+              tooltipElement.innerHTML = nearbyMarker.title;
+              tooltipElement.style.display = 'block';
+              tooltipElement.style.left = `${param.point.x + 10}px`;
+              tooltipElement.style.top = `${param.point.y - 35}px`;
+            } else {
+              // Скрываем тултип
+              tooltipElement.style.display = 'none';
+            }
+          }
+        } else {
+          // Скрываем тултип если нет активной точки
+          tooltipElement.style.display = 'none';
+        }
+      };
+
+      // Подписываемся на событие движения перекрестия с новым обработчиком
+      chart.subscribeCrosshairMove(handleCrosshairMove);
       
       // Инициализируем легенду
       updateLegend(undefined);
+
+      // Сохраняем ссылку на функцию обновления маркеров
+      chart.updateMarkers = (markers) => {
+        currentMarkers = markers;
+      };
 
       // Устанавливаем данные графика
       candlestickSeries.setData(chartData);
@@ -1160,12 +1323,26 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
         forecastSeriesRef.current = null;
       }
 
-      // Update lunar event markers
-      if (lunarEvents && lunarEvents.length > 0) {
-        try {
-          console.log('🌙 Adding lunar phase markers:', lunarEvents.length);
+      // 🔧 ИСПРАВЛЕНИЕ: Создаем единый массив всех маркеров для правильного отображения
+      const createAllMarkers = () => {
+        console.log('🎯 Создание всех маркеров:', {
+          lunarEventsCount: lunarEvents?.length || 0,
+          solarEventsCount: solarEvents?.length || 0,
+          showLunarEvents,
+          showSolarEvents,
+          showForecast
+        });
+
+        const allMarkers = [];
+        const lastHistoricalTime = chartData?.length > 0 ? chartData[chartData.length - 1].time : 0;
+        // 🔧 ИСПРАВЛЕНИЕ: Не объединяем данные, передаем их раздельно в getApproximatePriceForDate
+        const combinedDataForSearch = [...(chartData || []), ...(forecastData || [])];
+
+        // 🌙 Добавляем лунные маркеры
+        if (lunarEvents && lunarEvents.length > 0 && showLunarEvents) {
+          console.log('🌙 Обрабатываем лунные события:', lunarEvents.length);
           
-          const lunarMarkers = lunarEvents.map((event, index) => {
+          lunarEvents.forEach((event, index) => {
             const isNewMoon = event.type === 'new_moon';
             
             // Handle event time
@@ -1176,7 +1353,23 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
               eventTime = typeof event.time === 'number' ? event.time : Math.floor(new Date(event.time).getTime() / 1000);
             } else {
               console.warn('Lunar event without time:', event);
-              return null;
+              return;
+            }
+            
+            // Skip forecast events if forecast is disabled
+            const isInForecastPeriod = eventTime > lastHistoricalTime;
+            if (isInForecastPeriod && !showForecast) {
+              console.log('⏭️ Пропускаем лунное событие в прогнозном периоде (прогноз отключен)');
+              return;
+            }
+
+            // Get approximate price for marker
+            const eventDate = new Date(eventTime * 1000);
+            const price = getApproximatePriceForDate(eventDate, combinedDataForSearch);
+            
+            if (!price) {
+              console.warn('⚠️ Не удалось найти цену для лунного события:', event);
+              return;
             }
             
             // Adaptive marker size based on timeframe
@@ -1212,62 +1405,13 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
                 : (isDarkMode ? '#facc15' : '#eab308');
             }
             
-            // Get approximate price for marker
-            const combinedData = [...(chartData || []), ...(forecastData || [])];
-            const eventDate = new Date(eventTime * 1000);
-            const price = getApproximatePriceForDate(eventDate, combinedData);
-            
-            if (!price) return null;
-            
             // Smart positioning to avoid overlaps
             let priceOffset = 1.02;
-            const nearbyEvents = lunarEvents.filter((otherEvent, otherIndex) => {
-              if (otherIndex >= index) return false;
-              
-              const otherTime = otherEvent.date 
-                ? Math.floor(new Date(otherEvent.date).getTime() / 1000)
-                : (typeof otherEvent.time === 'number' ? otherEvent.time : Math.floor(new Date(otherEvent.time).getTime() / 1000));
-              
-              let proximityThreshold;
-              switch(timeframe) {
-                case '1m':
-                case '5m':
-                  proximityThreshold = 60 * 60; // 1 hour
-                  break;
-                case '15m':
-                case '30m':
-                  proximityThreshold = 4 * 60 * 60; // 4 hours
-                  break;
-                case '1h':
-                case '4h':
-                  proximityThreshold = 24 * 60 * 60; // 1 day
-                  break;
-                case '1d':
-                  proximityThreshold = 7 * 24 * 60 * 60; // 7 days
-                  break;
-                case '1w':
-                  proximityThreshold = 30 * 24 * 60 * 60; // 30 days
-                  break;
-                default:
-                  proximityThreshold = 24 * 60 * 60;
-              }
-              
-              return Math.abs(eventTime - otherTime) < proximityThreshold;
-            });
-            
-            priceOffset += nearbyEvents.length * 0.01;
-            
-            // Check if event is in forecast period
-            const lastHistoricalTime = chartData?.length > 0 ? chartData[chartData.length - 1].time : 0;
-            const isInForecastPeriod = eventTime > lastHistoricalTime;
-            
-            if (isInForecastPeriod && !showForecast) {
-              return null;
-            }
+            priceOffset += index * 0.005; // Небольшое смещение для каждого события
             
             const markerIcon = event.icon || (isNewMoon ? '🌑' : '🌕');
             
-            return {
+            allMarkers.push({
               time: eventTime,
               position: 'aboveBar',
               shape: 'text',
@@ -1275,34 +1419,187 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
               size: markerSize,
               price: price * priceOffset,
               color: markerColor,
-              tooltip: `${event.phaseName} - ${formatDate(eventTime)}`
-            };
-          }).filter(marker => marker !== null);
-          
-          // Sort markers by time
-          lunarMarkers.sort((a, b) => a.time - b.time);
-          
-          // Separate historical and forecast markers
-          const lastHistoricalTime = chartData?.length > 0 ? chartData[chartData.length - 1].time : 0;
-          const historicalMarkers = lunarMarkers.filter(marker => marker.time <= lastHistoricalTime);
-          const forecastMarkers = lunarMarkers.filter(marker => marker.time > lastHistoricalTime);
-          
-          // Add historical markers to main series
-          if (historicalMarkers.length > 0) {
-            candlestickSeriesRef.current.setMarkers(historicalMarkers);
-          }
-          
-          // Add forecast markers to forecast series if it exists
-          if (forecastMarkers.length > 0 && forecastSeriesRef.current && showForecast) {
-            forecastSeriesRef.current.setMarkers(forecastMarkers);
-          } else if (forecastMarkers.length > 0 && showForecast) {
-            // If no forecast series but forecast enabled, add all markers to main series
-            candlestickSeriesRef.current.setMarkers(lunarMarkers);
-          }
-          
-        } catch (err) {
-          console.error('Error adding lunar phase markers:', err);
+              type: 'lunar',
+              id: `lunar-${eventTime}`, // Уникальный ID для тултипа
+              title: `${event.phaseName || event.title} - ${formatDate(eventTime)}` // 🔧 Правильный атрибут для тултипа
+            });
+            
+            console.log(`🌙 Добавлен лунный маркер: ${markerIcon} в ${new Date(eventTime * 1000).toISOString()}`);
+          });
         }
+
+        // 🌞 Добавляем солнечные маркеры
+        if (solarEvents && solarEvents.length > 0 && showSolarEvents) {
+          console.log('🌞 Обрабатываем солнечные события:', solarEvents.length);
+          
+          solarEvents.forEach((event, index) => {
+            // Handle event time
+            let eventTime;
+            if (event.time) {
+              eventTime = typeof event.time === 'number' ? event.time : Math.floor(new Date(event.time).getTime() / 1000);
+            } else {
+              console.warn('Solar event without time:', event);
+              return;
+            }
+            
+            // Get approximate price for marker
+            const eventDate = new Date(eventTime * 1000);
+            const price = getApproximatePriceForDate(eventDate, combinedDataForSearch);
+            
+            if (!price) {
+              console.warn('⚠️ Не удалось найти цену для солнечного события:', event);
+              return;
+            }
+            
+            // Configure marker appearance based on event type
+            let markerColor, markerPosition, priceOffset, markerSize;
+            
+            switch (event.subtype) {
+              case 'spring_equinox':
+                markerColor = isDarkMode ? '#10b981' : '#059669'; // Green
+                markerPosition = 'belowBar';
+                priceOffset = 0.96;
+                markerSize = 1.5;
+                break;
+              case 'summer_solstice':
+                markerColor = isDarkMode ? '#f59e0b' : '#d97706'; // Orange
+                markerPosition = 'belowBar';
+                priceOffset = 0.95;
+                markerSize = 1.8;
+                break;
+              case 'autumn_equinox':
+                markerColor = isDarkMode ? '#8b5cf6' : '#7c3aed'; // Purple
+                markerPosition = 'belowBar';
+                priceOffset = 0.94;
+                markerSize = 1.5;
+                break;
+              case 'winter_solstice':
+                markerColor = isDarkMode ? '#3b82f6' : '#2563eb'; // Blue
+                markerPosition = 'belowBar';
+                priceOffset = 0.93;
+                markerSize = 1.8;
+                break;
+              case 'solar_eclipse':
+                markerColor = isDarkMode ? '#ef4444' : '#dc2626'; // Red
+                markerPosition = 'aboveBar';
+                priceOffset = 1.07;
+                markerSize = 2.0;
+                break;
+              case 'lunar_eclipse':
+                markerColor = isDarkMode ? '#ec4899' : '#db2777'; // Pink
+                markerPosition = 'aboveBar';
+                priceOffset = 1.08;
+                markerSize = 2.0;
+                break;
+              default:
+                markerColor = isDarkMode ? '#fbbf24' : '#f59e0b'; // Yellow
+                markerPosition = 'aboveBar';
+                priceOffset = 1.06;
+                markerSize = 1.2;
+            }
+            
+            // Adaptive marker size based on timeframe
+            switch(timeframe) {
+              case '1m':
+              case '5m':
+              case '15m':
+                markerSize *= 0.8;
+                break;
+              case '30m':
+              case '1h':
+                markerSize *= 1;
+                break;
+              case '4h':
+              case '1d':
+                markerSize *= 1.2;
+                break;
+              case '1w':
+                markerSize *= 1.5;
+                break;
+            }
+            
+            // Adjust offset based on position to avoid overlaps
+            priceOffset += index * 0.005; // Небольшое смещение для каждого события
+            
+            // Use icon if available, otherwise show text based on type
+            const markerText = event.icon || (() => {
+              switch (event.subtype) {
+                case 'spring_equinox': return '🌱';
+                case 'summer_solstice': return '☀️';
+                case 'autumn_equinox': return '🍂';
+                case 'winter_solstice': return '❄️';
+                case 'solar_eclipse': return '🌒';
+                case 'lunar_eclipse': return '🌕';
+                default: return '🌞';
+              }
+            })();
+            
+            allMarkers.push({
+              time: eventTime,
+              position: markerPosition,
+              shape: 'text',
+              text: markerText,
+              size: markerSize,
+              price: price * priceOffset,
+              color: markerColor,
+              type: 'solar',
+              id: `solar-${eventTime}`, // Уникальный ID для тултипа
+              title: `${event.title} - ${formatDate(eventTime)}` // 🔧 Правильный атрибут для тултипа
+            });
+            
+            console.log(`🌞 Добавлен солнечный маркер: ${markerText} в ${new Date(eventTime * 1000).toISOString()}, тип: ${event.subtype}`);
+          });
+        }
+
+        // Sort all markers by time
+        allMarkers.sort((a, b) => a.time - b.time);
+        
+        console.log(`📍 Создано всего маркеров: ${allMarkers.length}`);
+        console.log('📍 Детали маркеров:', allMarkers.map(m => ({
+          time: new Date(m.time * 1000).toISOString(),
+          text: m.text,
+          type: m.type,
+          position: m.position
+        })));
+
+        return allMarkers;
+      };
+
+      // Создаем и устанавливаем все маркеры
+      try {
+        const allMarkers = createAllMarkers();
+        
+        if (allMarkers.length > 0) {
+          console.log(`✅ Устанавливаем ${allMarkers.length} маркеров на график`);
+          candlestickSeriesRef.current.setMarkers(allMarkers);
+          
+          // 🔧 НОВОЕ: Обновляем маркеры для тултипов
+          if (chartRef.current && chartRef.current.updateMarkers) {
+            chartRef.current.updateMarkers(allMarkers);
+          }
+          
+          // Также устанавливаем маркеры на прогнозную серию если она существует
+          if (forecastSeriesRef.current && showForecast) {
+            const forecastMarkers = allMarkers.filter(marker => marker.time > lastHistoricalTime);
+            if (forecastMarkers.length > 0) {
+              console.log(`✅ Устанавливаем ${forecastMarkers.length} прогнозных маркеров`);
+              forecastSeriesRef.current.setMarkers(forecastMarkers);
+            }
+          }
+        } else {
+          console.log('🚫 Нет маркеров для отображения');
+          candlestickSeriesRef.current.setMarkers([]);
+          if (forecastSeriesRef.current) {
+            forecastSeriesRef.current.setMarkers([]);
+          }
+          
+          // 🔧 НОВОЕ: Очищаем маркеры для тултипов
+          if (chartRef.current && chartRef.current.updateMarkers) {
+            chartRef.current.updateMarkers([]);
+          }
+        }
+      } catch (err) {
+        console.error('❌ Ошибка при создании маркеров:', err);
       }
 
       // Add other events markers
@@ -1388,7 +1685,7 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
     } catch (error) {
       console.error('❌ Error updating chart data:', error);
     }
-  }, [chartData, forecastData, lunarEvents, events, showForecast, timeframe, chartReady, loading]); // 🔧 УБИРАЕМ isDarkMode из dependencies!
+  }, [chartData, forecastData, lunarEvents, solarEvents, events, showForecast, showSolarEvents, showLunarEvents, timeframe, chartReady, loading, isDarkMode]); // 🔧 Добавляем isDarkMode для обновления цветов маркеров
 
   // 🔧 ОТДЕЛЬНЫЙ useEffect для обновления ТОЛЬКО темы существующего графика БЕЗ пересоздания
   useEffect(() => {
@@ -1457,6 +1754,14 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
     
     const targetTimestamp = Math.floor(date.getTime() / 1000);
     
+    console.log(`🔍 Поиск цены для события в ${new Date(targetTimestamp * 1000).toISOString()}`);
+    console.log('📊 Доступные данные:', {
+      totalCandles: candleData.length,
+      firstTime: candleData[0] ? new Date(candleData[0].time * 1000).toISOString() : 'N/A',
+      lastTime: candleData[candleData.length - 1] ? new Date(candleData[candleData.length - 1].time * 1000).toISOString() : 'N/A',
+      targetTime: new Date(targetTimestamp * 1000).toISOString()
+    });
+    
     // Ищем ближайшую свечу
     let closestCandle = candleData[0];
     let minDiff = Math.abs(targetTimestamp - closestCandle.time);
@@ -1469,32 +1774,49 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
       }
     }
     
-    // Проверяем, находится ли событие в будущем (после последней свечи)
-    if (targetTimestamp > candleData[candleData.length - 1].time) {
-      // Ищем соответствующую прогнозную свечу вместо использования последней реальной
-      // Сначала проверяем, есть ли среди candleData прогнозные свечи
-      const forecastCandles = candleData.filter(candle => candle.isForecast);
+    // 🔧 ИСПРАВЛЕНИЕ: Правильно определяем границу между историческими и прогнозными данными
+    const historicalData = chartData || [];
+    const forecastDataArray = forecastData || [];
+    const lastHistoricalTime = historicalData.length > 0 ? historicalData[historicalData.length - 1].time : 0;
+    
+    console.log(`⏰ Временные границы:`, {
+      lastHistoricalTime: new Date(lastHistoricalTime * 1000).toISOString(),
+      targetTimestamp: new Date(targetTimestamp * 1000).toISOString(),
+      isInFuture: targetTimestamp > lastHistoricalTime,
+      forecastDataLength: forecastDataArray.length
+    });
+    
+    // Если событие в будущем и у нас есть прогнозные данные
+    if (targetTimestamp > lastHistoricalTime && forecastDataArray.length > 0) {
+      console.log('🔮 Событие в прогнозном периоде, ищем в прогнозных данных');
       
-      if (forecastCandles.length > 0) {
-        // Если есть прогнозные свечи, находим ближайшую к событию
-        let closestForecastCandle = forecastCandles[0];
-        let minForecastDiff = Math.abs(targetTimestamp - closestForecastCandle.time);
-        
-        for (const candle of forecastCandles) {
-          const diff = Math.abs(targetTimestamp - candle.time);
-          if (diff < minForecastDiff) {
-            minForecastDiff = diff;
-            closestForecastCandle = candle;
-          }
+      // Ищем ближайшую прогнозную свечу
+      let closestForecastCandle = forecastDataArray[0];
+      let minForecastDiff = Math.abs(targetTimestamp - closestForecastCandle.time);
+      
+      for (const candle of forecastDataArray) {
+        const diff = Math.abs(targetTimestamp - candle.time);
+        if (diff < minForecastDiff) {
+          minForecastDiff = diff;
+          closestForecastCandle = candle;
         }
-        
-        return closestForecastCandle.close;
-      } else {
-        // Если прогнозных свечей нет, используем последнюю доступную
-        const lastCandle = candleData[candleData.length - 1];
-        return lastCandle.close;
       }
+      
+      console.log(`🎯 Найдена ближайшая прогнозная свеча:`, {
+        time: new Date(closestForecastCandle.time * 1000).toISOString(),
+        price: closestForecastCandle.close,
+        diffSeconds: minForecastDiff
+      });
+      
+      return closestForecastCandle.close;
     }
+    
+    // Для исторических событий используем ближайшую историческую свечу
+    console.log(`📈 Найдена ближайшая историческая свеча:`, {
+      time: new Date(closestCandle.time * 1000).toISOString(),
+      price: closestCandle.close,
+      diffSeconds: minDiff
+    });
     
     return closestCandle.close;
   };
@@ -1709,8 +2031,125 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
         </div>
       )}
       
-      {/* 🗑️ STEP 3.2: Убрана старая панель событий по просьбе пользователя */}
-      {/* Панель будет переделана для переключения лунных/экономических/астрономических событий */}
+      {/* 🌌 Панель управления астрономическими событиями */}
+      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+        {/* Заголовок панели с кнопкой сворачивания */}
+        <div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+            🌌 Астрономические события
+          </h3>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleForecast}
+              className={`flex items-center gap-2 px-3 py-1 text-xs rounded-md transition-colors ${
+                showForecast
+                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600'
+              }`}
+              title={showForecast ? 'Скрыть прогноз' : 'Показать прогноз'}
+            >
+              <span className="text-sm">📈</span>
+              <span>Прогноз</span>
+            </button>
+            <button
+              onClick={() => setIsEventsCollapsed(!isEventsCollapsed)}
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors p-1 rounded"
+              title={isEventsCollapsed ? "Развернуть панель событий" : "Свернуть панель событий"}
+            >
+              {isEventsCollapsed ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+              )}
+            </button>
+          </div>
+        </div>
+        
+        {/* Содержимое панели (скрываемое) */}
+        {!isEventsCollapsed && (
+          <div className="p-3 space-y-4">
+            {/* Лунные события */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">🌙 Лунные фазы:</span>
+                <button
+                  onClick={() => setShowLunarEvents(!showLunarEvents)}
+                  className={`flex items-center gap-2 px-3 py-1 text-xs rounded-md transition-colors ${
+                    showLunarEvents
+                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600'
+                  }`}
+                  title={showLunarEvents ? 'Скрыть лунные фазы' : 'Показать лунные фазы'}
+                >
+                  <span className="text-sm">🌙</span>
+                  <span>{showLunarEvents ? 'Включено' : 'Выключено'}</span>
+                  <span className="text-xs opacity-70">
+                    ({lunarEvents.length})
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Солнечные события */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">☀️ Солнечные события:</span>
+                  <button
+                    onClick={() => setShowSolarEvents(!showSolarEvents)}
+                    className={`flex items-center gap-2 px-3 py-1 text-xs rounded-md transition-colors ${
+                      showSolarEvents
+                        ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-700'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600'
+                    }`}
+                    title={showSolarEvents ? 'Скрыть солнечные события' : 'Показать солнечные события'}
+                  >
+                    <span className="text-sm">🌞</span>
+                    <span>{showSolarEvents ? 'Включено' : 'Выключено'}</span>
+                    <span className="text-xs opacity-70">
+                      ({solarEvents.length})
+                    </span>
+                  </button>
+                </div>
+              </div>
+              
+              {/* Легенда солнечных событий */}
+              {showSolarEvents && solarEvents.length > 0 && (
+                <div className="flex items-center gap-3 text-xs flex-wrap">
+                  <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 bg-green-500 dark:bg-green-400 rounded-full" title="Весеннее равноденствие"></span>
+                    <span className="text-gray-600 dark:text-gray-400">🌱 Весна</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 bg-orange-500 dark:bg-orange-400 rounded-full" title="Летнее солнцестояние"></span>
+                    <span className="text-gray-600 dark:text-gray-400">☀️ Лето</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 bg-purple-500 dark:bg-purple-400 rounded-full" title="Осеннее равноденствие"></span>
+                    <span className="text-gray-600 dark:text-gray-400">🍂 Осень</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 bg-blue-500 dark:bg-blue-400 rounded-full" title="Зимнее солнцестояние"></span>
+                    <span className="text-gray-600 dark:text-gray-400">❄️ Зима</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 bg-red-500 dark:bg-red-400 rounded-full" title="Солнечное затмение"></span>
+                    <span className="text-gray-600 dark:text-gray-400">🌒 Солн. затм.</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 bg-pink-500 dark:bg-pink-400 rounded-full" title="Лунное затмение"></span>
+                    <span className="text-gray-600 dark:text-gray-400">🌕 Лун. затм.</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
       
       <div 
         ref={chartContainerRef} 
@@ -1756,4 +2195,4 @@ const BitcoinChartWithLunarPhases = ({ timeframe, data = [] }) => {
   );
 };
 
-export default BitcoinChartWithLunarPhases;
+export default UniversalChart;
