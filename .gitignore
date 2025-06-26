@@ -77,3 +77,7 @@ docker-compose.override.yml
 .vite-inspect/
 debug.log
 audit.json
+
+# Playwright
+/blob-report/
+/playwright/.cache/
